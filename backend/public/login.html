@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Login - Control Biométrico</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #0b0f17, #111827);
+  color: white;
+}
+
+/* -------- NAVBAR -------- */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #111827;
+  padding: 15px 25px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.navbar .brand {
+  font-size: 1.4em;
+  font-weight: bold;
+  color: #00ffcc;
+}
+
+.navbar .nav-links {
+  list-style: none;
+  display: flex;
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar .nav-links li a {
+  color: white;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.hamburger {
+  display: none;
+  flex-direction: column;
+  cursor: pointer;
+  gap: 5px;
+}
+
+.hamburger div {
+  width: 25px;
+  height: 3px;
+  background: white;
+}
+
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    background: #111827;
+    padding: 15px;
+    border-radius: 8px;
+  }
+
+  .nav-links.show {
+    display: flex;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+}
+
+/* -------- LOGIN CARD -------- */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 85vh;
+}
+
+.login-card {
+  background: #1f2937;
+  padding: 40px;
+  border-radius: 15px;
+  width: 320px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+
+.login-card h1 {
+  margin-bottom: 25px;
+  color: #00ffcc;
+}
+
+.login-card input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 8px;
+  border: none;
+  background: #111827;
+  color: white;
+}
+
+.login-card button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 15px;
+  border: none;
+  border-radius: 8px;
+  background: #00ffcc;
+  color: #111827;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.login-card button:hover {
+  background: #00d4aa;
+}
+</style>
+</head>
+
+<body>
+
+<nav class="navbar">
+  <div class="brand">Control Biométrico</div>
+
+  <div class="hamburger" id="hamburger">
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
+
+  <ul class="nav-links" id="navLinks">
+    <li><a href="index.html">Inicio</a></li>
+  </ul>
+</nav>
+
+<div class="login-container">
+  <div class="login-card">
+    <h1>Login Administrador</h1>
+    <input id="username" placeholder="Usuario">
+    <input id="password" type="password" placeholder="Contraseña">
+    <button id="btnLogin">Iniciar Sesión</button>
+  </div>
+</div>
+
+<script>
+// Si ya está logueado, enviarlo al inicio
+if (localStorage.getItem("token")) {
+  window.location.href = "index.html";
+}
+
+// Hamburguesa
+const hamburger = document.getElementById("hamburger");
+const navLinks = document.getElementById("navLinks");
+
+hamburger.addEventListener("click", () => {
+  navLinks.classList.toggle("show");
+});
+
+// Login
+document.getElementById("btnLogin").addEventListener("click", async () => {
+
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch("/login", {
+    method:"POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    localStorage.setItem("token", data.token);
+    window.location.href = "index.html"; // 🔥 redirige al inicio
+  } else {
+    alert(data.msg);
+  }
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const token = localStorage.getItem("token");
+
+  const linkLogin = document.getElementById("linkLogin");
+  const linkPanel = document.getElementById("linkPanel");
+  const linkRegistro = document.getElementById("linkRegistro");
+  const linkLogout = document.getElementById("linkLogout");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  // Mostrar / ocultar menú según sesión
+  if (token) {
+    linkLogin.style.display = "none";
+    linkPanel.style.display = "block";
+    linkRegistro.style.display = "block";
+    linkLogout.style.display = "block";
+  } else {
+    linkLogin.style.display = "block";
+    linkPanel.style.display = "none";
+    linkRegistro.style.display = "none";
+    linkLogout.style.display = "none";
+  }
+
+  // Logout manual
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.removeItem("token");
+      window.location.href = "login.html";
+    });
+  }
+
+  // Hamburguesa
+  const hamburger = document.getElementById("hamburger");
+  const navLinks = document.getElementById("navLinks");
+  hamburger.addEventListener("click", () => navLinks.classList.toggle("show"));
+});
+
+// Eliminar token solo al **cerrar la pestaña**, no al recargar
+window.addEventListener("unload", () => {
+  if (!document.hidden) { // Se dispara al cerrar la pestaña
+    localStorage.removeItem("token");
+  }
+});
+</script>
+
+
+</body>
+</html>
