@@ -15,11 +15,11 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // ----------------- Conexión MySQL -----------------
 const db = mysql.createConnection({
-  host: process.env.MYSQLHOST,
-  user: process.env.MYSQLUSER,
-  password: process.env.MYSQLPASSWORD,
-  database: process.env.MYSQLDATABASE,
-  port: process.env.MYSQLPORT
+  host: "yamabiko.proxy.rlwy.net",
+  user: "root",
+  password: "RmXamUCIhaPzOkwfUtZSyOdjhItYyFWV",
+  database: "railway",
+  port: 51996
 });
 
 db.connect(err => {
