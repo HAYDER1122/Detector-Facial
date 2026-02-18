@@ -13,10 +13,8 @@ button:hover { background:#00d4aa; }
 #videoContainer { position:relative; display:inline-block; margin-top:20px; }
 video { border-radius:10px; border:2px solid #00ffcc; }
 #mensaje { margin-top:15px; font-weight:bold; }
-.navbar {
-  display:flex; justify-content:space-between; align-items:center;
-  background:#111827; padding:15px 25px; box-shadow:0 4px 12px rgba(0,0,0,0.5);
-}
+
+.navbar { display:flex; justify-content:space-between; align-items:center; background:#111827; padding:15px 25px; box-shadow:0 4px 12px rgba(0,0,0,0.5); }
 .navbar .brand { font-size:1.4em; font-weight:bold; color:#00ffcc; }
 .navbar .nav-links { list-style:none; display:flex; gap:25px; margin:0; padding:0; }
 .navbar .nav-links li a { color:white; text-decoration:none; font-weight:bold; transition:0.3s; }
@@ -35,15 +33,11 @@ video { border-radius:10px; border:2px solid #00ffcc; }
 <!-- NAVBAR -->
 <nav class="navbar">
   <div class="brand">Control Biométrico</div>
-
-  <div class="hamburger" id="hamburger">
-    <div></div><div></div><div></div>
-  </div>
-
+  <div class="hamburger" id="hamburger"><div></div><div></div><div></div></div>
   <ul class="nav-links" id="navLinks">
     <li id="linkLogin"><a href="login.html">Login</a></li>
     <li id="linkPanel" style="display:none;"><a href="admin.html">Panel</a></li>
-    <li id="linkInicio" style="display:none;"><a href="index.html">Inicio</a></li>
+    <li id="linkRegistro" style="display:none;"><a href="registro.html">Registro</a></li>
     <li id="linkLogout" style="display:none;"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
   </ul>
 </nav>
@@ -64,39 +58,6 @@ video { border-radius:10px; border:2px solid #00ffcc; }
     <video id="video" width="400" height="300" autoplay muted playsinline></video>
   </div>
 </div>
-
-<script>
-// ----------------- Navbar dinámico -----------------
-document.addEventListener("DOMContentLoaded", () => {
-  const token = localStorage.getItem("token");
-  const linkLogin = document.getElementById("linkLogin");
-  const linkPanel = document.getElementById("linkPanel");
-  const linkInicio = document.getElementById("linkInicio");
-  const linkLogout = document.getElementById("linkLogout");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const hamburger = document.getElementById("hamburger");
-  const navLinks = document.getElementById("navLinks");
-
-  if (token) {
-    linkLogin.style.display = "none";
-    linkPanel.style.display = "block";
-    linkInicio.style.display = "block";
-    linkLogout.style.display = "block";
-  }
-
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      localStorage.removeItem("token");
-      window.location.href = "login.html";
-    });
-  }
-
-  if (hamburger) {
-    hamburger.addEventListener("click", () => navLinks.classList.toggle("show"));
-  }
-});
-</script>
 
 <script src="/js/face-api.min.js"></script>
 <script>
@@ -122,7 +83,7 @@ async function activarCamara() {
     mensaje.innerText = "Cámara activa ✅";
   } catch (err) {
     console.error("Error al abrir cámara:", err);
-    mensaje.innerText = "No se pudo acceder a la cámara. Revisa permisos y navegador.";
+    mensaje.innerText = "No se pudo acceder a la cámara.";
     mensaje.style.color = "red";
   }
 }
@@ -142,6 +103,7 @@ async function capturarDescriptor() {
     descriptors.push(Array.from(deteccion.descriptor));
     await new Promise(r => setTimeout(r, 500));
   }
+  // Promedio de descriptores
   return descriptors[0].map((_, i) => descriptors.reduce((sum, d) => sum + d[i], 0) / descriptors.length);
 }
 
@@ -157,6 +119,12 @@ btnRegistrar.addEventListener("click", async () => {
     return;
   }
 
+  if (!token) {
+    mensaje.innerText = "Debes iniciar sesión primero";
+    mensaje.style.color = "red";
+    return;
+  }
+
   mensaje.innerText = "Capturando rostro...";
   mensaje.style.color = "orange";
 
@@ -166,20 +134,58 @@ btnRegistrar.addEventListener("click", async () => {
   try {
     const res = await fetch("/registrar-persona", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
       body: JSON.stringify({ nombre, sede, descriptor })
     });
+
     const data = await res.json();
+
     mensaje.innerText = data.msg || "Error al registrar";
     mensaje.style.color = res.ok ? "#00ffcc" : "red";
+
     if (res.ok) {
       document.getElementById("nombre").value = "";
       document.getElementById("sede").value = "";
     }
+
   } catch (err) {
     console.error(err);
     mensaje.innerText = "Error servidor";
     mensaje.style.color = "red";
+  }
+});
+
+// ---------- Navbar dinámico ----------
+document.addEventListener("DOMContentLoaded", () => {
+  const token = localStorage.getItem("token");
+  const linkLogin = document.getElementById("linkLogin");
+  const linkPanel = document.getElementById("linkPanel");
+  const linkRegistro = document.getElementById("linkRegistro");
+  const linkLogout = document.getElementById("linkLogout");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const hamburger = document.getElementById("hamburger");
+  const navLinks = document.getElementById("navLinks");
+
+  if (token) {
+    if(linkLogin) linkLogin.style.display = "none";
+    if(linkPanel) linkPanel.style.display = "block";
+    if(linkRegistro) linkRegistro.style.display = "block";
+    if(linkLogout) linkLogout.style.display = "block";
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.removeItem("token");
+      window.location.href = "login.html";
+    });
+  }
+
+  if (hamburger) {
+    hamburger.addEventListener("click", () => navLinks.classList.toggle("show"));
   }
 });
 
@@ -189,52 +195,5 @@ window.addEventListener("load", async () => {
   await activarCamara();
 });
 </script>
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const token = localStorage.getItem("token");
-
-  const linkLogin = document.getElementById("linkLogin");
-  const linkPanel = document.getElementById("linkPanel");
-  const linkRegistro = document.getElementById("linkRegistro");
-  const linkLogout = document.getElementById("linkLogout");
-  const logoutBtn = document.getElementById("logoutBtn");
-
-  // Mostrar / ocultar menú según sesión
-  if (token) {
-    linkLogin.style.display = "none";
-    linkPanel.style.display = "block";
-    linkRegistro.style.display = "block";
-    linkLogout.style.display = "block";
-  } else {
-    linkLogin.style.display = "block";
-    linkPanel.style.display = "none";
-    linkRegistro.style.display = "none";
-    linkLogout.style.display = "none";
-  }
-
-  // Logout manual
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      localStorage.removeItem("token");
-      window.location.href = "login.html";
-    });
-  }
-
-  // Hamburguesa
-  const hamburger = document.getElementById("hamburger");
-  const navLinks = document.getElementById("navLinks");
-  hamburger.addEventListener("click", () => navLinks.classList.toggle("show"));
-});
-
-// Eliminar token solo al **cerrar la pestaña**, no al recargar
-window.addEventListener("unload", () => {
-  if (!document.hidden) { // Se dispara al cerrar la pestaña
-    localStorage.removeItem("token");
-  }
-});
-</script>
-
-
 </body>
 </html>
