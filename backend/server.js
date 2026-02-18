@@ -23,8 +23,11 @@ const db = mysql.createConnection({
 });
 
 db.connect(err => {
-  if (err) throw err;
-  console.log("DB conectada ✅");
+  if (err) {
+    console.error("Error conectando BD:", err);
+  } else {
+    console.log("DB conectada ✅");
+  }
 });
 
 // ----------------- Función JWT -----------------
@@ -108,7 +111,10 @@ app.post("/registrar-persona", verificarToken, (req, res) => {
   });
 });
 
-// ----------------- Reconocer y registrar asistencia -----------------
+// ----------------- Reconocer y registrar asistencia (MEJORADO) -----------------
+const FACE_THRESHOLD = 0.55;
+const MIN_GAP = 0.05;
+
 app.post("/reconocer", (req, res) => {
   const { descriptor, tipo } = req.body;
   const tiposValidos = ["entrada", "salida", "descanso", "entrada_descanso"];
@@ -117,55 +123,86 @@ app.post("/reconocer", (req, res) => {
     return res.status(400).send({ ok: false, mensaje: "Datos incompletos o tipo inválido" });
 
   db.query("SELECT * FROM personas WHERE activo=1", (err, personas) => {
-    if (err) return res.status(500).send({ ok: false, mensaje: "Error BD" });
-
-    let personaCoincidente = null;
-    let minDist = 999;
-
-    for (const p of personas) {
-      const distancia = euclideanDistance(p.descriptor, descriptor);
-      if (distancia < minDist) {
-        minDist = distancia;
-        personaCoincidente = p;
-      }
+    if (err) {
+      console.error("Error BD personas:", err);
+      return res.status(500).send({ ok: false, mensaje: "Error BD" });
     }
 
-    if (!personaCoincidente || minDist > 0.75)
-      return res.send({ ok: false, mensaje: "Rostro no reconocido" });
+    if (personas.length === 0) {
+      return res.send({ ok: false, mensaje: "No hay personas registradas" });
+    }
 
-    const sqlHoy = `SELECT * FROM registros WHERE nombre=? AND DATE(fecha)=CURDATE()`;
-    db.query(sqlHoy, [personaCoincidente.nombre], (err2, registros) => {
-      if (err2) return res.status(500).send({ ok: false, mensaje: "Error BD" });
+    // Calcular distancias
+    let distancias = personas.map(p => ({
+      persona: p,
+      distancia: euclideanDistance(p.descriptor, descriptor)
+    }));
+
+    // Ordenar por menor distancia
+    distancias.sort((a, b) => a.distancia - b.distancia);
+
+    const mejor = distancias[0];
+    const segundo = distancias[1];
+
+    console.log("---- Comparaciones ----");
+    distancias.forEach(d => console.log(`${d.persona.nombre} → ${d.distancia}`));
+
+    // Validación estricta
+    if (!mejor || mejor.distancia > FACE_THRESHOLD || (segundo && (segundo.distancia - mejor.distancia) < MIN_GAP)) {
+      return res.send({ ok: false, mensaje: "Rostro no reconocido" });
+    }
+
+    const persona = mejor.persona;
+    console.log("Persona reconocida:", persona.nombre);
+    console.log("Distancia:", mejor.distancia);
+
+    const hoy = new Date();
+    const fechaLocal = hoy.toISOString().split("T")[0];
+
+    const sqlHoy = "SELECT * FROM registros WHERE persona_id=? AND DATE(fecha)=?";
+    db.query(sqlHoy, [persona.id, fechaLocal], (err2, registros) => {
+      if (err2) {
+        console.error("Error BD registros:", err2);
+        return res.status(500).send({ ok: false, mensaje: "Error BD" });
+      }
 
       const accionesHoy = registros.map(r => r.tipo);
 
-      // Validación lógica de acciones
       if (tipo === "entrada" && accionesHoy.includes("entrada"))
         return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
+
       if (tipo === "salida" && !accionesHoy.includes("entrada"))
         return res.send({ ok: false, mensaje: "No puedes salir sin haber entrado" });
+
       if (tipo === "salida" && accionesHoy.includes("salida"))
         return res.send({ ok: false, mensaje: "Ya registraste salida hoy" });
+
       if (tipo === "descanso" && !accionesHoy.includes("entrada"))
         return res.send({ ok: false, mensaje: "No puedes tomar descanso sin entrar primero" });
+
       if (tipo === "descanso" && accionesHoy.includes("descanso"))
         return res.send({ ok: false, mensaje: "Ya registraste descanso hoy" });
+
       if (tipo === "entrada_descanso" && !accionesHoy.includes("descanso"))
         return res.send({ ok: false, mensaje: "No puedes entrar de descanso sin haber salido de descanso" });
+
       if (tipo === "entrada_descanso" && accionesHoy.includes("entrada_descanso"))
         return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
 
       db.query(
-        "INSERT INTO registros (nombre, tipo) VALUES (?, ?)",
-        [personaCoincidente.nombre, tipo],
+        "INSERT INTO registros (persona_id, nombre, tipo) VALUES (?, ?, ?)",
+        [persona.id, persona.nombre, tipo],
         err3 => {
-          if (err3) return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
+          if (err3) {
+            console.error("Error guardando registro:", err3);
+            return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
+          }
 
           res.send({
             ok: true,
-            nombre: personaCoincidente.nombre,
+            nombre: persona.nombre,
             tipo,
-            mensaje: `${personaCoincidente.nombre} - ${tipo} registrado ✅`
+            mensaje: `${persona.nombre} - ${tipo} registrado ✅`
           });
         }
       );
@@ -189,7 +226,6 @@ app.post("/personas/:id/toggle", verificarToken, (req,res)=>{
   });
 });
 
-// ----------------- Dashboard -----------------
 // ----------------- Dashboard -----------------
 app.get("/asistencias", verificarToken, (req, res) => {
   const { fecha, nombre } = req.query;
@@ -220,13 +256,11 @@ app.get("/asistencias", verificarToken, (req, res) => {
   });
 });
 
-
-// ----------------- Exportar registros a Excel filtrados por nombre y/o fecha -----------------
+// ----------------- Exportar registros a Excel -----------------
 app.get("/exportar-registros", verificarToken, async (req, res) => {
   try {
     const { fecha, nombre } = req.query;
 
-    // SQL dinámico según los filtros
     let sql = "SELECT nombre, tipo, fecha FROM registros";
     const params = [];
     const conditions = [];
@@ -238,7 +272,7 @@ app.get("/exportar-registros", verificarToken, async (req, res) => {
 
     if (nombre) {
       conditions.push("nombre LIKE ?");
-      params.push(`%${nombre}%`); // permite filtrado parcial por nombre
+      params.push(`%${nombre}%`);
     }
 
     if (conditions.length > 0) {
@@ -293,9 +327,6 @@ app.get("/exportar-registros", verificarToken, async (req, res) => {
   }
 });
 
-
-
-
 // ----------------- Servir login -----------------
 app.get("/", (req,res)=>{
   res.sendFile(path.join(__dirname,"public/login.html"));
@@ -303,7 +334,6 @@ app.get("/", (req,res)=>{
 
 // ----------------- Iniciar servidor -----------------
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, '0.0.0.0', () => {
   console.log("Servidor activo en puerto " + PORT);
 });
