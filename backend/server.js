@@ -109,75 +109,80 @@ app.post("/registrar-persona", verificarToken, (req, res) => {
 const FACE_THRESHOLD = 0.55;
 
 app.post("/reconocer", (req, res) => {
-  const { descriptor, tipo } = req.body;
-  const tiposValidos = ["entrada", "salida", "descanso", "entrada_descanso"];
+  try {
+    const { descriptor, tipo } = req.body;
+    const tiposValidos = ["entrada", "salida", "descanso", "entrada_descanso"];
 
-  if (!descriptor || !tipo || !tiposValidos.includes(tipo))
-    return res.status(400).send({ ok: false, mensaje: "Datos incompletos o tipo inválido" });
+    if (!descriptor || !Array.isArray(descriptor) || descriptor.length === 0)
+      return res.status(400).send({ ok: false, mensaje: "Descriptor inválido" });
 
-  // Obtenemos todos los descriptores activos con persona
-  const sql = `
-    SELECT p.id AS persona_id, p.nombre, d.descriptor
-    FROM personas p
-    JOIN descriptores d ON p.id = d.persona_id
-    WHERE p.activo = 1
-  `;
+    if (!tipo || !tiposValidos.includes(tipo))
+      return res.status(400).send({ ok: false, mensaje: "Tipo inválido" });
 
-  db.query(sql, (err, rows) => {
-    if (err) return res.status(500).send({ ok: false, mensaje: "Error BD" });
-    if (rows.length === 0) return res.send({ ok: false, mensaje: "No hay personas registradas" });
+    db.query("SELECT * FROM personas WHERE activo=1", (err, personas) => {
+      if (err) return res.status(500).send({ ok: false, mensaje: "Error BD" });
 
-    // Agrupamos descriptores por persona
-    const personasMap = {};
-    rows.forEach(r => {
-      if (!personasMap[r.persona_id]) personasMap[r.persona_id] = { nombre: r.nombre, descriptors: [] };
-      personasMap[r.persona_id].descriptors.push(JSON.parse(r.descriptor));
-    });
+      let personaCoincidente = null;
+      let minDist = 999;
 
-    let mejorPersona = null;
-    let mejorPromedio = 999;
+      for (const p of personas) {
+        let desc = null;
+        try { desc = JSON.parse(p.descriptor); } 
+        catch(e){ continue; } // Ignorar descriptores corruptos
 
-    for (const id in personasMap) {
-      const persona = personasMap[id];
-      const distancias = persona.descriptors.map(d => euclideanDistance(d, descriptor));
-      const promedio = distancias.reduce((a,b)=>a+b,0)/distancias.length;
-
-      if (promedio < mejorPromedio) {
-        mejorPromedio = promedio;
-        mejorPersona = { id, nombre: persona.nombre };
+        const distancia = euclideanDistance(desc, descriptor);
+        if (distancia < minDist) {
+          minDist = distancia;
+          personaCoincidente = p;
+        }
       }
-    }
 
-    if (!mejorPersona || mejorPromedio > FACE_THRESHOLD)
-      return res.send({ ok: false, mensaje: "Rostro no reconocido" });
+      if (!personaCoincidente || minDist > 0.75)
+        return res.send({ ok: false, mensaje: "Rostro no reconocido" });
 
-    // Guardar registro
-    const hoy = new Date().toISOString().split("T")[0];
-    db.query("SELECT * FROM registros WHERE persona_id=? AND DATE(fecha)=?", [mejorPersona.id, hoy], (err2, registros) => {
-      if (err2) return res.status(500).send({ ok: false, mensaje: "Error BD" });
+      const sqlHoy = `SELECT * FROM registros WHERE nombre=? AND DATE(fecha)=CURDATE()`;
+      db.query(sqlHoy, [personaCoincidente.nombre], (err2, registros) => {
+        if (err2) return res.status(500).send({ ok: false, mensaje: "Error BD" });
 
-      const accionesHoy = registros.map(r => r.tipo);
-      if (tipo === "entrada" && accionesHoy.includes("entrada"))
-        return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
-      if (tipo === "salida" && !accionesHoy.includes("entrada"))
-        return res.send({ ok: false, mensaje: "No puedes salir sin haber entrado" });
-      if (tipo === "salida" && accionesHoy.includes("salida"))
-        return res.send({ ok: false, mensaje: "Ya registraste salida hoy" });
-      if (tipo === "descanso" && !accionesHoy.includes("entrada"))
-        return res.send({ ok: false, mensaje: "No puedes tomar descanso sin entrar primero" });
-      if (tipo === "descanso" && accionesHoy.includes("descanso"))
-        return res.send({ ok: false, mensaje: "Ya registraste descanso hoy" });
-      if (tipo === "entrada_descanso" && !accionesHoy.includes("descanso"))
-        return res.send({ ok: false, mensaje: "No puedes entrar de descanso sin haber salido de descanso" });
-      if (tipo === "entrada_descanso" && accionesHoy.includes("entrada_descanso"))
-        return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
+        const accionesHoy = registros.map(r => r.tipo);
 
-      db.query("INSERT INTO registros (persona_id, nombre, tipo) VALUES (?, ?, ?)", [mejorPersona.id, mejorPersona.nombre, tipo], err3 => {
-        if (err3) return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
-        res.send({ ok: true, nombre: mejorPersona.nombre, tipo, mensaje: `${mejorPersona.nombre} - ${tipo} registrado ✅` });
+        // Validación lógica
+        if (tipo === "entrada" && accionesHoy.includes("entrada"))
+          return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
+        if (tipo === "salida" && !accionesHoy.includes("entrada"))
+          return res.send({ ok: false, mensaje: "No puedes salir sin haber entrado" });
+        if (tipo === "salida" && accionesHoy.includes("salida"))
+          return res.send({ ok: false, mensaje: "Ya registraste salida hoy" });
+        if (tipo === "descanso" && !accionesHoy.includes("entrada"))
+          return res.send({ ok: false, mensaje: "No puedes tomar descanso sin entrar primero" });
+        if (tipo === "descanso" && accionesHoy.includes("descanso"))
+          return res.send({ ok: false, mensaje: "Ya registraste descanso hoy" });
+        if (tipo === "entrada_descanso" && !accionesHoy.includes("descanso"))
+          return res.send({ ok: false, mensaje: "No puedes entrar de descanso sin haber salido de descanso" });
+        if (tipo === "entrada_descanso" && accionesHoy.includes("entrada_descanso"))
+          return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
+
+        db.query(
+          "INSERT INTO registros (nombre, tipo) VALUES (?, ?)",
+          [personaCoincidente.nombre, tipo],
+          err3 => {
+            if (err3) return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
+
+            res.send({
+              ok: true,
+              nombre: personaCoincidente.nombre,
+              tipo,
+              mensaje: `${personaCoincidente.nombre} - ${tipo} registrado ✅`
+            });
+          }
+        );
       });
     });
-  });
+
+  } catch(e) {
+    console.error(e);
+    res.status(500).send({ ok: false, mensaje: "Error interno servidor" });
+  }
 });
 
 
