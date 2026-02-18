@@ -15,11 +15,11 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // ----------------- Conexión MySQL -----------------
 const db = mysql.createConnection({
-  host: "yamabiko.proxy.rlwy.net",
+  host: "crossover.proxy.rlwy.net",
   user: "root",
-  password: "RmXamUCIhaPzOkwfUtZSyOdjhItYyFWV",
+  password: "olUAUFxKCdxJxcnjgUcHmccxlNjJgeHR",
   database: "railway",
-  port: 51996
+  port: 38474
 });
 
 db.connect(err => {
