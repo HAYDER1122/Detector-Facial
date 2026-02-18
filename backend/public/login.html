@@ -138,14 +138,12 @@ body {
     <div></div>
   </div>
 
-  
   <ul class="nav-links" id="navLinks">
-  <li id="linkLogin"><a href="index.html">INICIO</a></li>
-  <li id="linkPanel"><a href="index.html">Panel</a></li>
-  <li id="linkRegistro"><a href="registro.html">Registro</a></li>
-  <li id="linkLogout"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
-</ul>
-
+    <li id="linkLogin"><a href="index.html">INICIO</a></li>
+    <li id="linkPanel"><a href="index.html">Panel</a></li>
+    <li id="linkRegistro"><a href="registro.html">Registro</a></li>
+    <li id="linkLogout"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
+  </ul>
 </nav>
 
 <div class="login-container">
@@ -153,12 +151,13 @@ body {
     <h1>Login Administrador</h1>
     <input id="username" placeholder="Usuario">
     <input id="password" type="password" placeholder="Contraseña">
-    <button id="btnLogin">Iniciar Sesión</button>
+    <!-- type="button" evita submit nativo -->
+    <button id="btnLogin" type="button">Iniciar Sesión</button>
   </div>
 </div>
 
 <script>
-// Si ya está logueado, enviarlo al inicio
+// Redirigir si ya hay token
 if (localStorage.getItem("token")) {
   window.location.href = "index.html";
 }
@@ -166,44 +165,56 @@ if (localStorage.getItem("token")) {
 // Hamburguesa
 const hamburger = document.getElementById("hamburger");
 const navLinks = document.getElementById("navLinks");
+hamburger.addEventListener("click", () => navLinks.classList.toggle("show"));
 
-hamburger.addEventListener("click", () => {
-  navLinks.classList.toggle("show");
-});
-
-// Login
+// Login con fetch
 document.getElementById("btnLogin").addEventListener("click", async () => {
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
 
-  const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
+  if (!username || !password) {
+    alert("Completa todos los campos");
+    return;
+  }
 
-  const res = await fetch("/login", {
-    method:"POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
-  });
+  try {
+    const res = await fetch("/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
 
-  const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (err) {
+      console.error("Respuesta inválida del servidor:", err);
+      alert("Error en la comunicación con el servidor");
+      return;
+    }
 
-  if (res.ok) {
-    localStorage.setItem("token", data.token);
-    window.location.href = "index.html"; // 🔥 redirige al inicio
-  } else {
-    alert(data.msg);
+    if (res.ok) {
+      localStorage.setItem("token", data.token);
+      window.location.href = "index.html";
+    } else {
+      alert(data.msg || "Usuario o contraseña incorrectos");
+    }
+
+  } catch (err) {
+    console.error("Fetch error:", err);
+    alert("No se pudo conectar con el servidor");
   }
 });
-</script>
-<script>
+
+// Control menú según sesión
 document.addEventListener("DOMContentLoaded", () => {
   const token = localStorage.getItem("token");
-
   const linkLogin = document.getElementById("linkLogin");
   const linkPanel = document.getElementById("linkPanel");
   const linkRegistro = document.getElementById("linkRegistro");
   const linkLogout = document.getElementById("linkLogout");
   const logoutBtn = document.getElementById("logoutBtn");
 
-  // Mostrar / ocultar menú según sesión
   if (token) {
     linkLogin.style.display = "none";
     linkPanel.style.display = "block";
@@ -216,7 +227,6 @@ document.addEventListener("DOMContentLoaded", () => {
     linkLogout.style.display = "none";
   }
 
-  // Logout manual
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -224,21 +234,13 @@ document.addEventListener("DOMContentLoaded", () => {
       window.location.href = "login.html";
     });
   }
-
-  // Hamburguesa
-  const hamburger = document.getElementById("hamburger");
-  const navLinks = document.getElementById("navLinks");
-  hamburger.addEventListener("click", () => navLinks.classList.toggle("show"));
 });
 
-// Eliminar token solo al **cerrar la pestaña**, no al recargar
+// Eliminar token solo al cerrar la pestaña
 window.addEventListener("unload", () => {
-  if (!document.hidden) { // Se dispara al cerrar la pestaña
-    localStorage.removeItem("token");
-  }
+  if (!document.hidden) localStorage.removeItem("token");
 });
 </script>
-
 
 </body>
 </html>
