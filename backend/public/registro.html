@@ -158,9 +158,19 @@ btnRegistrar.addEventListener("click", async () => {
   }
 });
 
-// ---------- Navbar dinámico ----------
+
+
+// ---------- Inicializar ----------
+window.addEventListener("load", async () => {
+  await cargarModelos();
+  await activarCamara();
+});
+</script>
+<script>
+// Navbar dinámico seguro
 document.addEventListener("DOMContentLoaded", () => {
   const token = localStorage.getItem("token");
+
   const linkLogin = document.getElementById("linkLogin");
   const linkPanel = document.getElementById("linkPanel");
   const linkRegistro = document.getElementById("linkRegistro");
@@ -169,13 +179,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const hamburger = document.getElementById("hamburger");
   const navLinks = document.getElementById("navLinks");
 
+  // Mostrar / ocultar menú según sesión
   if (token) {
-    if(linkLogin) linkLogin.style.display = "none";
-    if(linkPanel) linkPanel.style.display = "block";
-    if(linkRegistro) linkRegistro.style.display = "block";
-    if(linkLogout) linkLogout.style.display = "block";
+    if (linkLogin) linkLogin.style.display = "none";
+    if (linkPanel) linkPanel.style.display = "block";
+    if (linkRegistro) linkRegistro.style.display = "block";
+    if (linkLogout) linkLogout.style.display = "block";
+  } else {
+    if (linkLogin) linkLogin.style.display = "block";
+    if (linkPanel) linkPanel.style.display = "none";
+    if (linkRegistro) linkRegistro.style.display = "none";
+    if (linkLogout) linkLogout.style.display = "none";
   }
 
+  // Logout manual
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -184,16 +201,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  if (hamburger) {
+  // Hamburguesa
+  if (hamburger && navLinks) {
     hamburger.addEventListener("click", () => navLinks.classList.toggle("show"));
   }
 });
-
-// ---------- Inicializar ----------
-window.addEventListener("load", async () => {
-  await cargarModelos();
-  await activarCamara();
-});
 </script>
+
 </body>
 </html>
