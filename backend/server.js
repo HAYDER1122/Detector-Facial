@@ -1,4 +1,4 @@
-// server.js
+// server.js PRO
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2");
@@ -23,11 +23,8 @@ const db = mysql.createConnection({
 });
 
 db.connect(err => {
-  if (err) {
-    console.error("Error conectando BD:", err);
-  } else {
-    console.log("DB conectada ✅");
-  }
+  if (err) console.error("Error conectando BD:", err);
+  else console.log("DB conectada ✅");
 });
 
 // ----------------- Función JWT -----------------
@@ -84,36 +81,32 @@ app.post("/login", (req, res) => {
   });
 });
 
-// ----------------- Registrar Persona -----------------
+// ----------------- Registrar Persona con múltiples descriptores -----------------
 app.post("/registrar-persona", verificarToken, (req, res) => {
   if (req.user.role !== "admin") return res.status(403).send({ msg: "No autorizado" });
 
-  const { nombre, sede, descriptor } = req.body;
-  if (!nombre || !sede || !descriptor) return res.status(400).send({ msg: "Datos incompletos" });
+  const { nombre, sede, descriptors } = req.body; // descriptors = array de vectores
+  if (!nombre || !sede || !descriptors || !Array.isArray(descriptors) || descriptors.length === 0)
+    return res.status(400).send({ msg: "Datos incompletos" });
 
-  db.query("SELECT * FROM personas WHERE activo=1", (err, personas) => {
-    if (err) return res.status(500).send({ msg: "Error BD" });
+  // Insertamos la persona primero
+  db.query("INSERT INTO personas (nombre, sede, activo) VALUES (?, ?, 1)", [nombre, sede], (err, result) => {
+    if (err) return res.status(500).send({ msg: "Error guardando persona" });
 
-    for (const p of personas) {
-      const distancia = euclideanDistance(p.descriptor, descriptor);
-      if (distancia < 0.65)
-        return res.status(400).send({ msg: `Esta persona ya está registrada como "${p.nombre}"` });
-    }
+    const personaId = result.insertId;
 
-    db.query(
-      "INSERT INTO personas (nombre, sede, descriptor, activo) VALUES (?, ?, ?, 1)",
-      [nombre, sede, JSON.stringify(descriptor)],
-      err2 => {
-        if (err2) return res.status(500).send({ msg: "Error guardando persona" });
-        res.send({ msg: "Persona registrada correctamente ✅" });
-      }
-    );
+    // Insertamos cada descriptor
+    const values = descriptors.map(d => [personaId, JSON.stringify(d)]);
+    db.query("INSERT INTO descriptores (persona_id, descriptor) VALUES ?", [values], err2 => {
+      if (err2) return res.status(500).send({ msg: "Error guardando descriptores" });
+
+      res.send({ msg: "Persona registrada correctamente ✅" });
+    });
   });
 });
 
-// ----------------- Reconocer y registrar asistencia (MEJORADO) -----------------
+// ----------------- Reconocer y registrar asistencia -----------------
 const FACE_THRESHOLD = 0.55;
-const MIN_GAP = 0.05;
 
 app.post("/reconocer", (req, res) => {
   const { descriptor, tipo } = req.body;
@@ -122,93 +115,71 @@ app.post("/reconocer", (req, res) => {
   if (!descriptor || !tipo || !tiposValidos.includes(tipo))
     return res.status(400).send({ ok: false, mensaje: "Datos incompletos o tipo inválido" });
 
-  db.query("SELECT * FROM personas WHERE activo=1", (err, personas) => {
-    if (err) {
-      console.error("Error BD personas:", err);
-      return res.status(500).send({ ok: false, mensaje: "Error BD" });
-    }
+  // Obtenemos todos los descriptores activos con persona
+  const sql = `
+    SELECT p.id AS persona_id, p.nombre, d.descriptor
+    FROM personas p
+    JOIN descriptores d ON p.id = d.persona_id
+    WHERE p.activo = 1
+  `;
 
-    if (personas.length === 0) {
-      return res.send({ ok: false, mensaje: "No hay personas registradas" });
-    }
+  db.query(sql, (err, rows) => {
+    if (err) return res.status(500).send({ ok: false, mensaje: "Error BD" });
+    if (rows.length === 0) return res.send({ ok: false, mensaje: "No hay personas registradas" });
 
-    // Calcular distancias
-    let distancias = personas.map(p => ({
-      persona: p,
-      distancia: euclideanDistance(p.descriptor, descriptor)
-    }));
+    // Agrupamos descriptores por persona
+    const personasMap = {};
+    rows.forEach(r => {
+      if (!personasMap[r.persona_id]) personasMap[r.persona_id] = { nombre: r.nombre, descriptors: [] };
+      personasMap[r.persona_id].descriptors.push(JSON.parse(r.descriptor));
+    });
 
-    // Ordenar por menor distancia
-    distancias.sort((a, b) => a.distancia - b.distancia);
+    let mejorPersona = null;
+    let mejorPromedio = 999;
 
-    const mejor = distancias[0];
-    const segundo = distancias[1];
+    for (const id in personasMap) {
+      const persona = personasMap[id];
+      const distancias = persona.descriptors.map(d => euclideanDistance(d, descriptor));
+      const promedio = distancias.reduce((a,b)=>a+b,0)/distancias.length;
 
-    console.log("---- Comparaciones ----");
-    distancias.forEach(d => console.log(`${d.persona.nombre} → ${d.distancia}`));
-
-    // Validación estricta
-    if (!mejor || mejor.distancia > FACE_THRESHOLD || (segundo && (segundo.distancia - mejor.distancia) < MIN_GAP)) {
-      return res.send({ ok: false, mensaje: "Rostro no reconocido" });
-    }
-
-    const persona = mejor.persona;
-    console.log("Persona reconocida:", persona.nombre);
-    console.log("Distancia:", mejor.distancia);
-
-    const hoy = new Date();
-    const fechaLocal = hoy.toISOString().split("T")[0];
-
-    const sqlHoy = "SELECT * FROM registros WHERE persona_id=? AND DATE(fecha)=?";
-    db.query(sqlHoy, [persona.id, fechaLocal], (err2, registros) => {
-      if (err2) {
-        console.error("Error BD registros:", err2);
-        return res.status(500).send({ ok: false, mensaje: "Error BD" });
+      if (promedio < mejorPromedio) {
+        mejorPromedio = promedio;
+        mejorPersona = { id, nombre: persona.nombre };
       }
+    }
+
+    if (!mejorPersona || mejorPromedio > FACE_THRESHOLD)
+      return res.send({ ok: false, mensaje: "Rostro no reconocido" });
+
+    // Guardar registro
+    const hoy = new Date().toISOString().split("T")[0];
+    db.query("SELECT * FROM registros WHERE persona_id=? AND DATE(fecha)=?", [mejorPersona.id, hoy], (err2, registros) => {
+      if (err2) return res.status(500).send({ ok: false, mensaje: "Error BD" });
 
       const accionesHoy = registros.map(r => r.tipo);
-
       if (tipo === "entrada" && accionesHoy.includes("entrada"))
         return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
-
       if (tipo === "salida" && !accionesHoy.includes("entrada"))
         return res.send({ ok: false, mensaje: "No puedes salir sin haber entrado" });
-
       if (tipo === "salida" && accionesHoy.includes("salida"))
         return res.send({ ok: false, mensaje: "Ya registraste salida hoy" });
-
       if (tipo === "descanso" && !accionesHoy.includes("entrada"))
         return res.send({ ok: false, mensaje: "No puedes tomar descanso sin entrar primero" });
-
       if (tipo === "descanso" && accionesHoy.includes("descanso"))
         return res.send({ ok: false, mensaje: "Ya registraste descanso hoy" });
-
       if (tipo === "entrada_descanso" && !accionesHoy.includes("descanso"))
         return res.send({ ok: false, mensaje: "No puedes entrar de descanso sin haber salido de descanso" });
-
       if (tipo === "entrada_descanso" && accionesHoy.includes("entrada_descanso"))
         return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
 
-      db.query(
-        "INSERT INTO registros (persona_id, nombre, tipo) VALUES (?, ?, ?)",
-        [persona.id, persona.nombre, tipo],
-        err3 => {
-          if (err3) {
-            console.error("Error guardando registro:", err3);
-            return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
-          }
-
-          res.send({
-            ok: true,
-            nombre: persona.nombre,
-            tipo,
-            mensaje: `${persona.nombre} - ${tipo} registrado ✅`
-          });
-        }
-      );
+      db.query("INSERT INTO registros (persona_id, nombre, tipo) VALUES (?, ?, ?)", [mejorPersona.id, mejorPersona.nombre, tipo], err3 => {
+        if (err3) return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
+        res.send({ ok: true, nombre: mejorPersona.nombre, tipo, mensaje: `${mejorPersona.nombre} - ${tipo} registrado ✅` });
+      });
     });
   });
 });
+
 
 // ----------------- Panel Administrativo -----------------
 app.get("/personas", verificarToken, (req, res) => {
