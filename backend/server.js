@@ -1,4 +1,4 @@
-// server.js PRO
+// server.js PRO - completo para Railway con Excel y SSL
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2");
@@ -13,18 +13,25 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// ----------------- Conexión MySQL -----------------
-const db = mysql.createConnection({
+// ----------------- Conexión MySQL con SSL -----------------
+const db = mysql.createPool({
   host: "crossover.proxy.rlwy.net",
   user: "root",
   password: "olUAUFxKCdxJxcnjgUcHmccxlNjJgeHR",
   database: "railway",
-  port: 38474
+  port: 38474,
+  ssl: { rejectUnauthorized: false }, // <- habilita SSL
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
-db.connect(err => {
+db.getConnection((err, conn) => {
   if (err) console.error("Error conectando BD:", err);
-  else console.log("DB conectada ✅");
+  else {
+    console.log("DB conectada ✅");
+    conn.release();
+  }
 });
 
 // ----------------- Función JWT -----------------
@@ -64,7 +71,10 @@ app.post("/login", (req, res) => {
   if (!username || !password) return res.status(400).send({ msg: "Datos incompletos" });
 
   db.query("SELECT * FROM usuarios WHERE username=?", [username], async (err, rows) => {
-    if (err) return res.status(500).send({ msg: "Error BD" });
+    if (err) {
+      console.error("Error BD login:", err);
+      return res.status(500).send({ msg: "Error BD" });
+    }
     if (rows.length === 0) return res.status(400).send({ msg: "Usuario no encontrado" });
 
     const user = rows[0];
@@ -81,24 +91,27 @@ app.post("/login", (req, res) => {
   });
 });
 
-// ----------------- Registrar Persona con múltiples descriptores -----------------
+// ----------------- Registrar Persona -----------------
 app.post("/registrar-persona", verificarToken, (req, res) => {
   if (req.user.role !== "admin") return res.status(403).send({ msg: "No autorizado" });
 
-  const { nombre, sede, descriptors } = req.body; // descriptors = array de vectores
+  const { nombre, sede, descriptors } = req.body;
   if (!nombre || !sede || !descriptors || !Array.isArray(descriptors) || descriptors.length === 0)
     return res.status(400).send({ msg: "Datos incompletos" });
 
-  // Insertamos la persona primero
   db.query("INSERT INTO personas (nombre, sede, activo) VALUES (?, ?, 1)", [nombre, sede], (err, result) => {
-    if (err) return res.status(500).send({ msg: "Error guardando persona" });
+    if (err) {
+      console.error("Error insert persona:", err);
+      return res.status(500).send({ msg: "Error guardando persona" });
+    }
 
     const personaId = result.insertId;
-
-    // Insertamos cada descriptor
     const values = descriptors.map(d => [personaId, JSON.stringify(d)]);
     db.query("INSERT INTO descriptores (persona_id, descriptor) VALUES ?", [values], err2 => {
-      if (err2) return res.status(500).send({ msg: "Error guardando descriptores" });
+      if (err2) {
+        console.error("Error insert descriptors:", err2);
+        return res.status(500).send({ msg: "Error guardando descriptores" });
+      }
 
       res.send({ msg: "Persona registrada correctamente ✅" });
     });
@@ -128,7 +141,7 @@ app.post("/reconocer", (req, res) => {
       for (const p of personas) {
         let desc = null;
         try { desc = JSON.parse(p.descriptor); } 
-        catch(e){ continue; } // Ignorar descriptores corruptos
+        catch(e){ continue; }
 
         const distancia = euclideanDistance(desc, descriptor);
         if (distancia < minDist) {
@@ -184,7 +197,6 @@ app.post("/reconocer", (req, res) => {
     res.status(500).send({ ok: false, mensaje: "Error interno servidor" });
   }
 });
-
 
 // ----------------- Panel Administrativo -----------------
 app.get("/personas", verificarToken, (req, res) => {
