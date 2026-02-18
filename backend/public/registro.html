@@ -107,57 +107,6 @@ async function capturarDescriptor() {
   return descriptors[0].map((_, i) => descriptors.reduce((sum, d) => sum + d[i], 0) / descriptors.length);
 }
 
-// ---------- Registrar persona ----------
-btnRegistrar.addEventListener("click", async () => {
-  const nombre = document.getElementById("nombre").value.trim();
-  const sede = document.getElementById("sede").value.trim();
-  const token = localStorage.getItem("token");
-
-  if (!nombre || !sede) {
-    mensaje.innerText = "Completa todos los campos";
-    mensaje.style.color = "red";
-    return;
-  }
-
-  if (!token) {
-    mensaje.innerText = "Debes iniciar sesión primero";
-    mensaje.style.color = "red";
-    return;
-  }
-
-  mensaje.innerText = "Capturando rostro...";
-  mensaje.style.color = "orange";
-
-  const descriptor = await capturarDescriptor();
-  if (!descriptor) return;
-
-  try {
-    const res = await fetch("/registrar-persona", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
-      },
-      body: JSON.stringify({ nombre, sede, descriptor })
-    });
-
-    const data = await res.json();
-
-    mensaje.innerText = data.msg || "Error al registrar";
-    mensaje.style.color = res.ok ? "#00ffcc" : "red";
-
-    if (res.ok) {
-      document.getElementById("nombre").value = "";
-      document.getElementById("sede").value = "";
-    }
-
-  } catch (err) {
-    console.error(err);
-    mensaje.innerText = "Error servidor";
-    mensaje.style.color = "red";
-  }
-});
-
 
 
 // ---------- Inicializar ----------
@@ -207,6 +156,66 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 </script>
+<script>
+// ---------- Registrar persona corregido ----------
+btnRegistrar.addEventListener("click", async () => {
+  const nombre = document.getElementById("nombre").value.trim();
+  const sede = document.getElementById("sede").value.trim();
+  const token = localStorage.getItem("token");
 
+  if (!nombre || !sede) {
+    mensaje.innerText = "Completa todos los campos";
+    mensaje.style.color = "red";
+    return;
+  }
+
+  if (!token) {
+    mensaje.innerText = "Debes iniciar sesión primero";
+    mensaje.style.color = "red";
+    return;
+  }
+
+  mensaje.innerText = "Capturando rostro...";
+  mensaje.style.color = "orange";
+
+  const descriptor = await capturarDescriptor();
+  if (!descriptor) return;
+
+  try {
+    // 🔹 Enviar como array 'descriptors' para que coincida con backend
+    const bodyToSend = {
+      nombre,
+      sede,
+      descriptors: [descriptor] // ✅ envolver en array
+    };
+
+    console.log("Enviando al servidor:", bodyToSend); // Para debug
+
+    const res = await fetch("/registrar-persona", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify(bodyToSend)
+    });
+
+    const data = await res.json();
+
+    mensaje.innerText = data.msg || "Error al registrar";
+    mensaje.style.color = res.ok ? "#00ffcc" : "red";
+
+    if (res.ok) {
+      document.getElementById("nombre").value = "";
+      document.getElementById("sede").value = "";
+    }
+
+  } catch (err) {
+    console.error(err);
+    mensaje.innerText = "Error servidor";
+    mensaje.style.color = "red";
+  }
+});
+</script>
 </body>
 </html>
