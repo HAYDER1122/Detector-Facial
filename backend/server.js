@@ -119,8 +119,6 @@ app.post("/registrar-persona", verificarToken, (req, res) => {
 });
 
 // ----------------- Reconocer y registrar asistencia -----------------
-const FACE_THRESHOLD = 0.75;
-
 app.post("/reconocer", (req, res) => {
   try {
     const { descriptor, tipo } = req.body;
@@ -178,7 +176,7 @@ app.post("/reconocer", (req, res) => {
 
           const accionesHoy = registros.map(r => r.tipo);
 
-          // Validación lógica de tipo
+          // Validaciones lógicas de tipos
           if (tipo === "entrada" && accionesHoy.includes("entrada"))
             return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
           if (tipo === "salida" && !accionesHoy.includes("entrada"))
@@ -194,23 +192,23 @@ app.post("/reconocer", (req, res) => {
           if (tipo === "entrada_descanso" && accionesHoy.includes("entrada_descanso"))
             return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
 
-          db.query(
-            "INSERT INTO registros (usuario_id, tipo, fecha_hora) VALUES (?, ?, NOW())",
-            [personaCoincidente.id, tipo],
-            err3 => {
-              if (err3) {
-                console.error("Error insert registro:", err3);
-                return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
-              }
+          // ------------------- Insertar registro con log detallado -------------------
+          const insertSQL = "INSERT INTO registros (usuario_id, tipo, fecha_hora) VALUES (?, ?, NOW())";
+          console.log("Insertando registro:", { usuario_id: personaCoincidente.id, tipo, fecha_hora: new Date() });
 
-              res.send({
-                ok: true,
-                nombre: personaCoincidente.nombre,
-                tipo,
-                mensaje: `${personaCoincidente.nombre} - ${tipo} registrado ✅`
-              });
+          db.query(insertSQL, [personaCoincidente.id, tipo], err3 => {
+            if (err3) {
+              console.error("Error insert registro:", err3);
+              return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
             }
-          );
+
+            res.send({
+              ok: true,
+              nombre: personaCoincidente.nombre,
+              tipo,
+              mensaje: `${personaCoincidente.nombre} - ${tipo} registrado ✅`
+            });
+          });
         }
       );
     });
@@ -220,6 +218,7 @@ app.post("/reconocer", (req, res) => {
     res.status(500).send({ ok: false, mensaje: "Error interno servidor" });
   }
 });
+
 
 // ----------------- Exportar registros a Excel -----------------
 app.get("/exportar-registros", verificarToken, async (req, res) => {
