@@ -81,15 +81,17 @@ app.post("/login", (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).send({ msg: "Contraseña incorrecta" });
 
+    // ⚡ CAMBIO: usar `user.rol` en vez de `user.role`
     const token = jwt.sign(
-      { id: user.id, role: user.role },
+      { id: user.id, role: user.rol },              // <-- aquí
       process.env.JWT_SECRET || "clave_secreta",
       { expiresIn: "12h" }
     );
 
-    res.send({ token, role: user.role });
+    res.send({ token, role: user.rol });          // <-- aquí también
   });
 });
+
 
 // ----------------- Registrar Persona -----------------
 app.post("/registrar-persona", verificarToken, (req, res) => {
