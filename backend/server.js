@@ -108,16 +108,20 @@ app.post("/registrar-persona", verificarToken, (req, res) => {
 
 // ----------------- Reconocer y registrar asistencia -----------------
 const FACE_THRESHOLD = 0.75;
+
 app.post("/reconocer", async (req, res) => {
   console.time("Reconocer");
   try {
     const { descriptor, tipo } = req.body;
     const tiposValidos = ["entrada", "salida", "descanso", "entrada_descanso"];
+
+    // Validación básica
     if (!descriptor || !Array.isArray(descriptor) || descriptor.length === 0)
       return res.status(400).send({ ok: false, mensaje: "Descriptor inválido" });
     if (!tipo || !tiposValidos.includes(tipo))
       return res.status(400).send({ ok: false, mensaje: "Tipo inválido" });
 
+    // ------------------- Traer descriptores activos -------------------
     const sqlPersonas = `
       SELECT p.id, p.nombre, d.descriptor
       FROM personas p
@@ -125,19 +129,23 @@ app.post("/reconocer", async (req, res) => {
       WHERE p.activo = 1
       LIMIT 100
     `;
+
     db.query(sqlPersonas, (err, filas) => {
       if (err) return res.status(500).send({ ok: false, mensaje: "Error BD" });
 
       const personasValidas = filas.map(f => {
         try {
           const desc = JSON.parse(f.descriptor);
-          if (Array.isArray(desc) && desc.length > 0) return { id: f.id, nombre: f.nombre, descriptor: desc };
-        } catch {} 
+          if (Array.isArray(desc) && desc.length > 0)
+            return { id: f.id, nombre: f.nombre, descriptor: desc };
+        } catch {}
         return null;
       }).filter(Boolean);
 
-      if (personasValidas.length === 0) return res.status(400).send({ ok: false, mensaje: "No hay descriptores válidos" });
+      if (personasValidas.length === 0)
+        return res.status(400).send({ ok: false, mensaje: "No hay descriptores válidos" });
 
+      // ------------------- Buscar coincidencia -------------------
       let personaCoincidente = null;
       let minDist = 999;
       for (const p of personasValidas) {
@@ -148,13 +156,17 @@ app.post("/reconocer", async (req, res) => {
         }
       }
 
-      if (!personaCoincidente || minDist > FACE_THRESHOLD) return res.send({ ok: false, mensaje: "Rostro no reconocido" });
+      if (!personaCoincidente || minDist > FACE_THRESHOLD)
+        return res.send({ ok: false, mensaje: "Rostro no reconocido" });
 
+      // ------------------- Consultar registros de hoy -------------------
       const sqlHoy = `SELECT tipo FROM registros WHERE persona_id=? AND DATE(fecha_hora)=CURDATE()`;
       db.query(sqlHoy, [personaCoincidente.id], (err2, registros) => {
         if (err2) return res.status(500).send({ ok: false, mensaje: "Error al consultar registros" });
 
         const accionesHoy = registros.map(r => r.tipo);
+
+        // ------------------- Validaciones -------------------
         if (tipo === "entrada" && accionesHoy.includes("entrada"))
           return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
         if (tipo === "salida" && !accionesHoy.includes("entrada"))
@@ -163,15 +175,26 @@ app.post("/reconocer", async (req, res) => {
           return res.send({ ok: false, mensaje: "Ya registraste salida hoy" });
         if (tipo === "descanso" && !accionesHoy.includes("entrada"))
           return res.send({ ok: false, mensaje: "No puedes tomar descanso sin entrar primero" });
-        if (tipo === "descanso" && accionesHoy.includes("descanso"))
+        if (tipo === "descanso" && accionesHoy.includes("descanso_salida"))
           return res.send({ ok: false, mensaje: "Ya registraste descanso hoy" });
-        if (tipo === "entrada_descanso" && !accionesHoy.includes("descanso"))
+        if (tipo === "entrada_descanso" && !accionesHoy.includes("descanso_salida"))
           return res.send({ ok: false, mensaje: "No puedes entrar de descanso sin haber salido de descanso" });
-        if (tipo === "entrada_descanso" && accionesHoy.includes("entrada_descanso"))
+        if (tipo === "entrada_descanso" && accionesHoy.includes("descanso_entrada"))
           return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
 
+        // ------------------- Mapear tipo a ENUM MySQL -------------------
+        let tipoDB;
+        switch (tipo) {
+          case "entrada": tipoDB = "entrada"; break;
+          case "salida": tipoDB = "salida"; break;
+          case "descanso": tipoDB = "descanso_salida"; break;
+          case "entrada_descanso": tipoDB = "descanso_entrada"; break;
+          default: return res.status(400).send({ ok:false, mensaje:"Tipo inválido" });
+        }
+
+        // ------------------- Insertar registro -------------------
         const insertSQL = "INSERT INTO registros (persona_id, tipo, fecha_hora) VALUES (?, ?, NOW())";
-        db.query(insertSQL, [personaCoincidente.id, tipo], err3 => {
+        db.query(insertSQL, [personaCoincidente.id, tipoDB], err3 => {
           console.timeEnd("Reconocer");
           if (err3) return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
 
@@ -190,6 +213,7 @@ app.post("/reconocer", async (req, res) => {
     res.status(500).send({ ok: false, mensaje: "Error interno servidor" });
   }
 });
+
 
 // ----------------- Exportar registros a Excel -----------------
 app.get("/exportar-registros", verificarToken, async (req, res) => {
