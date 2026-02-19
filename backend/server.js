@@ -20,7 +20,7 @@ const db = mysql.createPool({
   password: "olUAUFxKCdxJxcnjgUcHmccxlNjJgeHR",
   database: "railway",
   port: 38474,
-  ssl: { rejectUnauthorized: false }, // <- habilita SSL
+  ssl: { rejectUnauthorized: false },
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
@@ -81,17 +81,15 @@ app.post("/login", (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).send({ msg: "Contraseña incorrecta" });
 
-    // ⚡ CAMBIO: usar `user.rol` en vez de `user.role`
     const token = jwt.sign(
-      { id: user.id, role: user.rol },              // <-- aquí
+      { id: user.id, role: user.rol },
       process.env.JWT_SECRET || "clave_secreta",
       { expiresIn: "12h" }
     );
 
-    res.send({ token, role: user.rol });          // <-- aquí también
+    res.send({ token, role: user.rol });
   });
 });
-
 
 // ----------------- Registrar Persona -----------------
 app.post("/registrar-persona", verificarToken, (req, res) => {
@@ -121,7 +119,7 @@ app.post("/registrar-persona", verificarToken, (req, res) => {
 });
 
 // ----------------- Reconocer y registrar asistencia -----------------
-const FACE_THRESHOLD = 0.75; // ajustable según precisión de tu modelo
+const FACE_THRESHOLD = 0.75;
 
 app.post("/reconocer", (req, res) => {
   try {
@@ -134,7 +132,6 @@ app.post("/reconocer", (req, res) => {
     if (!tipo || !tiposValidos.includes(tipo))
       return res.status(400).send({ ok: false, mensaje: "Tipo inválido" });
 
-    // Unimos personas activas con sus descriptores
     db.query(`
       SELECT p.id, p.nombre, p.sede, d.descriptor
       FROM personas p
@@ -143,25 +140,31 @@ app.post("/reconocer", (req, res) => {
     `, (err, filas) => {
       if (err) return res.status(500).send({ ok: false, mensaje: "Error BD" });
 
+      // Filtrar descriptores válidos
+      const personasValidas = filas.filter(f => {
+        try {
+          f.descriptor = JSON.parse(f.descriptor);
+          return Array.isArray(f.descriptor) && f.descriptor.length > 0;
+        } catch { return false; }
+      });
+
+      if (personasValidas.length === 0)
+        return res.status(400).send({ ok: false, mensaje: "No hay descriptores válidos" });
+
       let personaCoincidente = null;
       let minDist = 999;
 
-      for (const fila of filas) {
-        let desc = null;
-        try { desc = JSON.parse(fila.descriptor); } 
-        catch(e){ continue; }
-
-        const distancia = euclideanDistance(desc, descriptor);
+      for (const p of personasValidas) {
+        const distancia = euclideanDistance(p.descriptor, descriptor);
         if (distancia < minDist) {
           minDist = distancia;
-          personaCoincidente = fila;
+          personaCoincidente = p;
         }
       }
 
       if (!personaCoincidente || minDist > FACE_THRESHOLD)
         return res.send({ ok: false, mensaje: "Rostro no reconocido" });
 
-      // Verificar registros del día
       const sqlHoy = `SELECT * FROM registros WHERE nombre=? AND DATE(fecha)=CURDATE()`;
       db.query(sqlHoy, [personaCoincidente.nombre], (err2, registros) => {
         if (err2) return res.status(500).send({ ok: false, mensaje: "Error BD" });
@@ -184,7 +187,6 @@ app.post("/reconocer", (req, res) => {
         if (tipo === "entrada_descanso" && accionesHoy.includes("entrada_descanso"))
           return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
 
-        // Insertar registro
         db.query(
           "INSERT INTO registros (nombre, tipo) VALUES (?, ?)",
           [personaCoincidente.nombre, tipo],
@@ -203,7 +205,7 @@ app.post("/reconocer", (req, res) => {
     });
 
   } catch(e) {
-    console.error(e);
+    console.error("Error en /reconocer:", e);
     res.status(500).send({ ok: false, mensaje: "Error interno servidor" });
   }
 });
