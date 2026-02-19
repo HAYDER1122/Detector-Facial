@@ -118,7 +118,7 @@ app.post("/registrar-persona", verificarToken, (req, res) => {
   });
 });
 
-// ----------------- Reconocer y registrar asistencia -----------------
+// ----------------- Reconocer y registrar asistencia robusto -----------------
 const FACE_THRESHOLD = 0.75;
 
 app.post("/reconocer", (req, res) => {
@@ -138,19 +138,30 @@ app.post("/reconocer", (req, res) => {
       JOIN descriptores d ON d.persona_id = p.id
       WHERE p.activo=1
     `, (err, filas) => {
-      if (err) return res.status(500).send({ ok: false, mensaje: "Error BD" });
+      if (err) {
+        console.error("Error DB /reconocer:", err);
+        return res.status(500).send({ ok: false, mensaje: "Error al consultar BD" });
+      }
 
-      // Filtrar descriptores válidos
-      const personasValidas = filas.filter(f => {
+      // Filtrar descriptores válidos y parsearlos
+      const personasValidas = [];
+      for (const f of filas) {
         try {
-          f.descriptor = JSON.parse(f.descriptor);
-          return Array.isArray(f.descriptor) && f.descriptor.length > 0;
-        } catch { return false; }
-      });
+          const desc = JSON.parse(f.descriptor);
+          if (Array.isArray(desc) && desc.length > 0) {
+            personasValidas.push({ ...f, descriptor: desc });
+          } else {
+            console.warn("Descriptor vacío o no array:", f.descriptor);
+          }
+        } catch (e) {
+          console.warn("Descriptor inválido JSON:", f.descriptor, e.message);
+        }
+      }
 
       if (personasValidas.length === 0)
-        return res.status(400).send({ ok: false, mensaje: "No hay descriptores válidos" });
+        return res.status(400).send({ ok: false, mensaje: "No hay descriptores válidos en BD" });
 
+      // Buscar la persona más cercana
       let personaCoincidente = null;
       let minDist = 999;
 
@@ -165,35 +176,46 @@ app.post("/reconocer", (req, res) => {
       if (!personaCoincidente || minDist > FACE_THRESHOLD)
         return res.send({ ok: false, mensaje: "Rostro no reconocido" });
 
+      // Revisar registros del día
       const sqlHoy = `SELECT * FROM registros WHERE nombre=? AND DATE(fecha)=CURDATE()`;
       db.query(sqlHoy, [personaCoincidente.nombre], (err2, registros) => {
-        if (err2) return res.status(500).send({ ok: false, mensaje: "Error BD" });
+        if (err2) {
+          console.error("Error DB registros hoy:", err2);
+          return res.status(500).send({ ok: false, mensaje: "Error al consultar registros" });
+        }
 
         const accionesHoy = registros.map(r => r.tipo);
 
-        // Validación lógica de tipo
-        if (tipo === "entrada" && accionesHoy.includes("entrada"))
-          return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
-        if (tipo === "salida" && !accionesHoy.includes("entrada"))
-          return res.send({ ok: false, mensaje: "No puedes salir sin haber entrado" });
-        if (tipo === "salida" && accionesHoy.includes("salida"))
-          return res.send({ ok: false, mensaje: "Ya registraste salida hoy" });
-        if (tipo === "descanso" && !accionesHoy.includes("entrada"))
-          return res.send({ ok: false, mensaje: "No puedes tomar descanso sin entrar primero" });
-        if (tipo === "descanso" && accionesHoy.includes("descanso"))
-          return res.send({ ok: false, mensaje: "Ya registraste descanso hoy" });
-        if (tipo === "entrada_descanso" && !accionesHoy.includes("descanso"))
-          return res.send({ ok: false, mensaje: "No puedes entrar de descanso sin haber salido de descanso" });
-        if (tipo === "entrada_descanso" && accionesHoy.includes("entrada_descanso"))
-          return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
+        // Validaciones lógicas
+        if ((tipo === "entrada" && accionesHoy.includes("entrada")) ||
+            (tipo === "salida" && !accionesHoy.includes("entrada")) ||
+            (tipo === "salida" && accionesHoy.includes("salida")) ||
+            (tipo === "descanso" && !accionesHoy.includes("entrada")) ||
+            (tipo === "descanso" && accionesHoy.includes("descanso")) ||
+            (tipo === "entrada_descanso" && !accionesHoy.includes("descanso")) ||
+            (tipo === "entrada_descanso" && accionesHoy.includes("entrada_descanso"))
+        ) {
+          let msg = "";
+          switch(tipo) {
+            case "entrada": msg = "Ya registraste entrada hoy"; break;
+            case "salida": msg = !accionesHoy.includes("entrada") ? "No puedes salir sin entrar" : "Ya registraste salida hoy"; break;
+            case "descanso": msg = !accionesHoy.includes("entrada") ? "No puedes tomar descanso sin entrar" : "Ya registraste descanso hoy"; break;
+            case "entrada_descanso": msg = !accionesHoy.includes("descanso") ? "No puedes entrar de descanso sin salir de descanso" : "Ya registraste entrada de descanso hoy"; break;
+          }
+          return res.send({ ok: false, mensaje: msg });
+        }
 
+        // Insertar registro
         db.query(
           "INSERT INTO registros (nombre, tipo) VALUES (?, ?)",
           [personaCoincidente.nombre, tipo],
           err3 => {
-            if (err3) return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
+            if (err3) {
+              console.error("Error guardando registro:", err3);
+              return res.status(500).send({ ok: false, mensaje: "Error al guardar registro" });
+            }
 
-            res.send({
+            return res.send({
               ok: true,
               nombre: personaCoincidente.nombre,
               tipo,
@@ -205,10 +227,11 @@ app.post("/reconocer", (req, res) => {
     });
 
   } catch(e) {
-    console.error("Error en /reconocer:", e);
-    res.status(500).send({ ok: false, mensaje: "Error interno servidor" });
+    console.error("Error inesperado /reconocer:", e);
+    return res.status(500).send({ ok: false, mensaje: "Error interno servidor" });
   }
 });
+
 
 // ----------------- Panel Administrativo -----------------
 app.get("/personas", verificarToken, (req, res) => {

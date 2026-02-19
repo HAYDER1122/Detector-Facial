@@ -277,34 +277,38 @@ selectTipo.addEventListener("change", () => {
     activarCamara();
 });
 
-  // ----------------- Detectar rostro -----------------
+ // ----------------- Detectar rostro -----------------
 async function detectar() {
-    if (!tipoSeleccionado || procesando) return;
-    procesando = true;
-    try {
+  if (!tipoSeleccionado || procesando) return;
+  procesando = true;
+
+  try {
     const deteccion = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptor();
+      .withFaceLandmarks()
+      .withFaceDescriptor();
 
     if (!deteccion) {
-        resultado.innerText = "Buscando rostro...";
-        procesando = false;
-        return;
+      resultado.innerText = "Buscando rostro...";
+      resultado.className = "estado-esperando";
+      procesando = false;
+      return;
     }
 
-      // Solo enviar token si existe
-        const headers = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
+    // Solo enviar token si existe
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
 
-        const res = await fetch("/reconocer", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ descriptor: Array.from(deteccion.descriptor), tipo: tipoSeleccionado })
+    const res = await fetch("/reconocer", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ descriptor: Array.from(deteccion.descriptor), tipo: tipoSeleccionado })
     });
 
     const data = await res.json();
 
-    if (data.ok) {
+    if (res.ok) {
+      // Caso éxito
+      if (data.ok) {
         const hora = new Date().getHours();
         const saludo = hora < 12 ? "¡Buenos días" : (hora < 19 ? "¡Buenas tardes" : "¡Buenas noches");
         overlay.innerText = `${saludo} ${data.nombre || ''} ✅`;
@@ -312,25 +316,36 @@ async function detectar() {
         sonidoOK.play();
         cerrarCamara();
         setTimeout(() => {
-        overlay.style.display = "none";
-        tipoSeleccionado = "";
-        selectTipo.value = "";
-        resultado.innerText = "Selecciona acción...";
-        resultado.className = "estado-esperando";
+          overlay.style.display = "none";
+          tipoSeleccionado = "";
+          selectTipo.value = "";
+          resultado.innerText = "Selecciona acción...";
+          resultado.className = "estado-esperando";
         }, 3000);
-    } else {
+      } else {
+        // Mensajes de negocio (no error servidor)
         resultado.innerText = data.mensaje || "Usuario no reconocido";
         resultado.className = "estado-error";
         sonidoError.play();
+      }
+    } else {
+      // Error HTTP
+      resultado.innerText = `Error servidor (${res.status})`;
+      resultado.className = "estado-error";
+      console.error("Respuesta HTTP:", res.status, data);
+      sonidoError.play();
     }
 
-    } catch (err) {
-    resultado.innerText = "Error servidor ❌";
+  } catch (err) {
+    resultado.innerText = "Error de conexión o servidor ❌";
     resultado.className = "estado-error";
-    console.error(err);
-    }
-    procesando = false;
+    console.error("Error detectando rostro:", err);
+    sonidoError.play();
+  }
+
+  procesando = false;
 }
+
 
 });
 </script>
