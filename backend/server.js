@@ -1,4 +1,4 @@
-// server.js PRO - completo para Railway con Excel y SSL
+// server.js - PRO completo con sede
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2");
@@ -13,7 +13,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// ----------------- Conexión MySQL con SSL -----------------
+// ----------------- Conexión MySQL -----------------
 const db = mysql.createPool({
   host: "crossover.proxy.rlwy.net",
   user: "root",
@@ -53,10 +53,8 @@ function verificarToken(req, res, next) {
 function euclideanDistance(a, b) {
   if (typeof a === "string") a = JSON.parse(a);
   if (typeof b === "string") b = JSON.parse(b);
-
   if (!Array.isArray(a) || !Array.isArray(b)) return 999;
   if (a.length !== b.length) return 999;
-
   let sum = 0;
   for (let i = 0; i < a.length; i++) {
     const diff = Number(a[i]) - Number(b[i]);
@@ -71,10 +69,7 @@ app.post("/login", (req, res) => {
   if (!username || !password) return res.status(400).send({ msg: "Datos incompletos" });
 
   db.query("SELECT * FROM usuarios WHERE username=?", [username], async (err, rows) => {
-    if (err) {
-      console.error("Error BD login:", err);
-      return res.status(500).send({ msg: "Error BD" });
-    }
+    if (err) return res.status(500).send({ msg: "Error BD" });
     if (rows.length === 0) return res.status(400).send({ msg: "Usuario no encontrado" });
 
     const user = rows[0];
@@ -100,40 +95,29 @@ app.post("/registrar-persona", verificarToken, (req, res) => {
     return res.status(400).send({ msg: "Datos incompletos" });
 
   db.query("INSERT INTO personas (nombre, sede, activo) VALUES (?, ?, 1)", [nombre, sede], (err, result) => {
-    if (err) {
-      console.error("Error insert persona:", err);
-      return res.status(500).send({ msg: "Error guardando persona" });
-    }
+    if (err) return res.status(500).send({ msg: "Error guardando persona" });
 
     const personaId = result.insertId;
     const values = descriptors.map(d => [personaId, JSON.stringify(d)]);
     db.query("INSERT INTO descriptores (persona_id, descriptor) VALUES ?", [values], err2 => {
-      if (err2) {
-        console.error("Error insert descriptors:", err2);
-        return res.status(500).send({ msg: "Error guardando descriptores" });
-      }
-
+      if (err2) return res.status(500).send({ msg: "Error guardando descriptores" });
       res.send({ msg: "Persona registrada correctamente ✅" });
     });
   });
 });
 
-// ----------------- Reconocer y registrar asistencia OPTIMIZADO -----------------
+// ----------------- Reconocer y registrar asistencia -----------------
 const FACE_THRESHOLD = 0.75;
-
 app.post("/reconocer", async (req, res) => {
-  console.time("Reconocer"); // medir tiempo total
+  console.time("Reconocer");
   try {
     const { descriptor, tipo } = req.body;
     const tiposValidos = ["entrada", "salida", "descanso", "entrada_descanso"];
-
     if (!descriptor || !Array.isArray(descriptor) || descriptor.length === 0)
       return res.status(400).send({ ok: false, mensaje: "Descriptor inválido" });
-
     if (!tipo || !tiposValidos.includes(tipo))
       return res.status(400).send({ ok: false, mensaje: "Tipo inválido" });
 
-    // ------------------- Traer solo descriptores activos -------------------
     const sqlPersonas = `
       SELECT p.id, p.nombre, d.descriptor
       FROM personas p
@@ -141,36 +125,21 @@ app.post("/reconocer", async (req, res) => {
       WHERE p.activo = 1
       LIMIT 100
     `;
-
     db.query(sqlPersonas, (err, filas) => {
-      if (err) {
-        console.error("Error SQL personas/descriptores:", err);
-        console.timeEnd("Reconocer");
-        return res.status(500).send({ ok: false, mensaje: "Error BD" });
-      }
+      if (err) return res.status(500).send({ ok: false, mensaje: "Error BD" });
 
-      // Filtrar y parsear descriptores válidos
-      const personasValidas = filas
-        .map(f => {
-          try {
-            const desc = JSON.parse(f.descriptor);
-            if (Array.isArray(desc) && desc.length > 0) {
-              return { id: f.id, nombre: f.nombre, descriptor: desc };
-            }
-          } catch {}
-          return null;
-        })
-        .filter(Boolean);
+      const personasValidas = filas.map(f => {
+        try {
+          const desc = JSON.parse(f.descriptor);
+          if (Array.isArray(desc) && desc.length > 0) return { id: f.id, nombre: f.nombre, descriptor: desc };
+        } catch {} 
+        return null;
+      }).filter(Boolean);
 
-      if (personasValidas.length === 0) {
-        console.timeEnd("Reconocer");
-        return res.status(400).send({ ok: false, mensaje: "No hay descriptores válidos" });
-      }
+      if (personasValidas.length === 0) return res.status(400).send({ ok: false, mensaje: "No hay descriptores válidos" });
 
-      // ------------------- Buscar coincidencia -------------------
       let personaCoincidente = null;
       let minDist = 999;
-
       for (const p of personasValidas) {
         let dist = euclideanDistance(p.descriptor, descriptor);
         if (dist < minDist) {
@@ -179,23 +148,13 @@ app.post("/reconocer", async (req, res) => {
         }
       }
 
-      if (!personaCoincidente || minDist > FACE_THRESHOLD) {
-        console.timeEnd("Reconocer");
-        return res.send({ ok: false, mensaje: "Rostro no reconocido" });
-      }
+      if (!personaCoincidente || minDist > FACE_THRESHOLD) return res.send({ ok: false, mensaje: "Rostro no reconocido" });
 
-      // ------------------- Consultar registros de hoy -------------------
-      const sqlHoy = `SELECT tipo FROM registros WHERE usuario_id=? AND DATE(fecha_hora)=CURDATE()`;
+      const sqlHoy = `SELECT tipo FROM registros WHERE persona_id=? AND DATE(fecha_hora)=CURDATE()`;
       db.query(sqlHoy, [personaCoincidente.id], (err2, registros) => {
-        if (err2) {
-          console.error("Error SQL registros:", err2);
-          console.timeEnd("Reconocer");
-          return res.status(500).send({ ok: false, mensaje: "Error al consultar registros" });
-        }
+        if (err2) return res.status(500).send({ ok: false, mensaje: "Error al consultar registros" });
 
         const accionesHoy = registros.map(r => r.tipo);
-
-        // Validación de tipo
         if (tipo === "entrada" && accionesHoy.includes("entrada"))
           return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
         if (tipo === "salida" && !accionesHoy.includes("entrada"))
@@ -211,14 +170,10 @@ app.post("/reconocer", async (req, res) => {
         if (tipo === "entrada_descanso" && accionesHoy.includes("entrada_descanso"))
           return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
 
-        // ------------------- Insertar registro -------------------
-        const insertSQL = "INSERT INTO registros (usuario_id, tipo, fecha_hora) VALUES (?, ?, NOW())";
+        const insertSQL = "INSERT INTO registros (persona_id, tipo, fecha_hora) VALUES (?, ?, NOW())";
         db.query(insertSQL, [personaCoincidente.id, tipo], err3 => {
           console.timeEnd("Reconocer");
-          if (err3) {
-            console.error("Error insert registro:", err3);
-            return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
-          }
+          if (err3) return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
 
           return res.send({
             ok: true,
@@ -236,73 +191,47 @@ app.post("/reconocer", async (req, res) => {
   }
 });
 
-
 // ----------------- Exportar registros a Excel -----------------
 app.get("/exportar-registros", verificarToken, async (req, res) => {
   try {
     const { fecha, nombre } = req.query;
-
     let sql = `
-      SELECT r.tipo, r.fecha_hora, p.nombre
+      SELECT r.tipo, r.fecha_hora, p.nombre, p.sede
       FROM registros r
-      JOIN personas p ON p.id = r.usuario_id
+      JOIN personas p ON r.persona_id = p.id
     `;
     const params = [];
     const conditions = [];
 
-    if (fecha) {
-      conditions.push("DATE(r.fecha_hora) = ?");
-      params.push(fecha);
-    }
-
-    if (nombre) {
-      conditions.push("p.nombre LIKE ?");
-      params.push(`%${nombre}%`);
-    }
-
-    if (conditions.length > 0) {
-      sql += " WHERE " + conditions.join(" AND ");
-    }
-
+    if (fecha) { conditions.push("DATE(r.fecha_hora)=?"); params.push(fecha); }
+    if (nombre) { conditions.push("p.nombre LIKE ?"); params.push(`%${nombre}%`); }
+    if (conditions.length>0) sql += " WHERE " + conditions.join(" AND ");
     sql += " ORDER BY r.fecha_hora DESC";
 
     db.query(sql, params, async (err, rows) => {
-      if (err) {
-        console.error("Error SQL exportar:", err);
-        return res.status(500).send({ ok: false, msg: "Error al consultar registros" });
-      }
+      if (err) return res.status(500).send({ ok: false, msg: "Error al consultar registros" });
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Registros");
-
       worksheet.columns = [
         { header: "Nombre", key: "nombre", width: 30 },
+        { header: "Sede", key: "sede", width: 20 },
         { header: "Tipo", key: "tipo", width: 20 },
         { header: "Fecha y Hora", key: "fecha_hora", width: 25 }
       ];
 
-      rows.forEach(r => {
-        worksheet.addRow({
-          nombre: r.nombre,
-          tipo: r.tipo,
-          fecha_hora: new Date(r.fecha_hora)
-        });
-      });
+      rows.forEach(r => worksheet.addRow({
+        nombre: r.nombre, sede: r.sede, tipo: r.tipo, fecha_hora: new Date(r.fecha_hora)
+      }));
 
       worksheet.getColumn("fecha_hora").numFmt = "yyyy-mm-dd hh:mm:ss";
       worksheet.getRow(1).eachCell(cell => {
-        cell.font = { bold: true };
-        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.font = { bold:true };
+        cell.alignment = { vertical:"middle", horizontal:"center" };
       });
 
-      res.setHeader(
-        "Content-Type",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      );
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename=registros.xlsx`
-      );
+      res.setHeader("Content-Type","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition","attachment; filename=registros.xlsx");
 
       await workbook.xlsx.write(res);
       res.end();
@@ -310,11 +239,11 @@ app.get("/exportar-registros", verificarToken, async (req, res) => {
 
   } catch (error) {
     console.error("Error generando Excel:", error);
-    res.status(500).send({ ok: false, msg: "Error generando Excel" });
+    res.status(500).send({ ok:false, msg:"Error generando Excel" });
   }
 });
 
-// ----------------- Panel Administrativo -----------------
+// ----------------- Endpoint panel -----------------
 app.get("/personas", verificarToken, (req, res) => {
   db.query("SELECT id, nombre, sede, activo FROM personas", (err, rows) => {
     if (err) return res.status(500).send([]);
@@ -335,8 +264,25 @@ app.get("/", (req,res)=>{
   res.sendFile(path.join(__dirname,"public/login.html"));
 });
 
+// ----------------- Endpoint asistencias para admin.js -----------------
+app.get("/asistencias", verificarToken, (req, res) => {
+  const { fecha, nombre } = req.query;
+  let sql = `
+    SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
+    FROM registros r
+    JOIN personas p ON r.persona_id = p.id
+    WHERE 1=1
+  `;
+  const params = [];
+  if(fecha){ sql += " AND DATE(r.fecha_hora)=?"; params.push(fecha); }
+  if(nombre){ sql += " AND p.nombre LIKE ?"; params.push(`%${nombre}%`); }
+  sql += " ORDER BY r.fecha_hora DESC";
+  db.query(sql, params, (err, rows)=>{
+    if(err) return res.status(500).send([]);
+    res.send(rows);
+  });
+});
+
 // ----------------- Iniciar servidor -----------------
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log("Servidor activo en puerto " + PORT);
-});
+app.listen(PORT,'0.0.0.0',()=>console.log("Servidor activo en puerto " + PORT));

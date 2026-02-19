@@ -36,7 +36,7 @@ async function cargarPersonas() {
   }
 }
 
-// ----------------- Cargar registros -----------------
+// ----------------- Cargar registros con sede -----------------
 async function cargarRegistros() {
   try {
     const fecha = document.getElementById("fechaFiltro").value;
@@ -50,14 +50,24 @@ async function cargarRegistros() {
     const res = await fetch("/asistencias?" + params.toString(), {
       headers: { "Authorization": `Bearer ${token}` }
     });
-    let registros = await res.json();
 
+    if (!res.ok) {
+      console.error("Error al cargar registros:", res.statusText);
+      return;
+    }
+
+    const registros = await res.json();
     const tbody = document.getElementById("registrosBody");
     tbody.innerHTML = "";
 
     registros.forEach(r => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${r.nombre}</td><td>${r.tipo}</td><td>${new Date(r.fecha).toLocaleString()}</td>`;
+      tr.innerHTML = `
+        <td>${r.nombre}</td>
+        <td>${r.sede}</td>
+        <td>${r.tipo}</td>
+        <td>${new Date(r.fecha).toLocaleString()}</td>
+      `;
       tbody.appendChild(tr);
     });
 
@@ -67,6 +77,7 @@ async function cargarRegistros() {
     console.error("Error cargando registros:", err);
   }
 }
+
 
 // ----------------- Gráfico entradas/salidas -----------------
 let chart;
