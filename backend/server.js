@@ -194,18 +194,21 @@ app.post("/reconocer", async (req, res) => {
 // ----------------- Exportar registros a Excel -----------------
 app.get("/exportar-registros", verificarToken, async (req, res) => {
   try {
-    const { fecha, nombre } = req.query;
+    const { fecha, nombre, sede } = req.query;
+
     let sql = `
       SELECT r.tipo, r.fecha_hora, p.nombre, p.sede
       FROM registros r
-      JOIN personas p ON r.persona_id = p.id
+      JOIN personas p ON p.id = r.persona_id
     `;
     const params = [];
     const conditions = [];
 
-    if (fecha) { conditions.push("DATE(r.fecha_hora)=?"); params.push(fecha); }
+    if (fecha) { conditions.push("DATE(r.fecha_hora) = ?"); params.push(fecha); }
     if (nombre) { conditions.push("p.nombre LIKE ?"); params.push(`%${nombre}%`); }
-    if (conditions.length>0) sql += " WHERE " + conditions.join(" AND ");
+    if (sede) { conditions.push("p.sede LIKE ?"); params.push(`%${sede}%`); }
+
+    if (conditions.length > 0) sql += " WHERE " + conditions.join(" AND ");
     sql += " ORDER BY r.fecha_hora DESC";
 
     db.query(sql, params, async (err, rows) => {
@@ -213,6 +216,7 @@ app.get("/exportar-registros", verificarToken, async (req, res) => {
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Registros");
+
       worksheet.columns = [
         { header: "Nombre", key: "nombre", width: 30 },
         { header: "Sede", key: "sede", width: 20 },
@@ -220,18 +224,29 @@ app.get("/exportar-registros", verificarToken, async (req, res) => {
         { header: "Fecha y Hora", key: "fecha_hora", width: 25 }
       ];
 
-      rows.forEach(r => worksheet.addRow({
-        nombre: r.nombre, sede: r.sede, tipo: r.tipo, fecha_hora: new Date(r.fecha_hora)
-      }));
+      rows.forEach(r => {
+        worksheet.addRow({
+          nombre: r.nombre,
+          sede: r.sede,
+          tipo: r.tipo,
+          fecha_hora: new Date(r.fecha_hora)
+        });
+      });
 
       worksheet.getColumn("fecha_hora").numFmt = "yyyy-mm-dd hh:mm:ss";
       worksheet.getRow(1).eachCell(cell => {
-        cell.font = { bold:true };
-        cell.alignment = { vertical:"middle", horizontal:"center" };
+        cell.font = { bold: true };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
       });
 
-      res.setHeader("Content-Type","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      res.setHeader("Content-Disposition","attachment; filename=registros.xlsx");
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=registros.xlsx`
+      );
 
       await workbook.xlsx.write(res);
       res.end();
@@ -239,7 +254,7 @@ app.get("/exportar-registros", verificarToken, async (req, res) => {
 
   } catch (error) {
     console.error("Error generando Excel:", error);
-    res.status(500).send({ ok:false, msg:"Error generando Excel" });
+    res.status(500).send({ ok: false, msg: "Error generando Excel" });
   }
 });
 
@@ -266,7 +281,7 @@ app.get("/", (req,res)=>{
 
 // ----------------- Endpoint asistencias para admin.js -----------------
 app.get("/asistencias", verificarToken, (req, res) => {
-  const { fecha, nombre } = req.query;
+  const { fecha, nombre, sede } = req.query;
   let sql = `
     SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
     FROM registros r
@@ -276,7 +291,9 @@ app.get("/asistencias", verificarToken, (req, res) => {
   const params = [];
   if(fecha){ sql += " AND DATE(r.fecha_hora)=?"; params.push(fecha); }
   if(nombre){ sql += " AND p.nombre LIKE ?"; params.push(`%${nombre}%`); }
+  if(sede){ sql += " AND p.sede LIKE ?"; params.push(`%${sede}%`); }
   sql += " ORDER BY r.fecha_hora DESC";
+
   db.query(sql, params, (err, rows)=>{
     if(err) return res.status(500).send([]);
     res.send(rows);

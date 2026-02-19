@@ -76,15 +76,15 @@ if (!localStorage.getItem("token")) {
   Exportar Registros a Excel
 </button>
 
-<!-- Filtro -->
+<!-- Filtros -->
 <div class="mb-3">
-  <input type="date" id="fechaFiltro" class="form-control" />
+  <input type="date" id="fechaFiltro" class="form-control mb-2" />
+  <input type="text" id="busquedaNombre" placeholder="Buscar por nombre" class="form-control mb-2" />
+  <input type="text" id="busquedaSede" placeholder="Buscar por sede" class="form-control mb-2" />
 </div>
 
 <!-- Tabla registros -->
 <h4>Registros de Asistencia</h4>
-<input type="text" id="busquedaNombre" placeholder="Buscar por nombre" class="form-control mb-2" />
-
 <div class="table-responsive">
 <table class="table table-striped table-dark">
   <thead>
@@ -131,8 +131,7 @@ document.getElementById("logoutBtn").addEventListener("click", function(e) {
   localStorage.removeItem("token");
   window.location.href = "login.html";
 });
-</script>
-<script>
+
 document.addEventListener("DOMContentLoaded", () => {
   const token = localStorage.getItem("token");
 
@@ -144,15 +143,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Mostrar / ocultar menú según sesión
   if (token) {
-    linkLogin.style.display = "none";
-    linkPanel.style.display = "block";
-    linkRegistro.style.display = "block";
-    linkLogout.style.display = "block";
+    if(linkLogin) linkLogin.style.display = "none";
+    if(linkPanel) linkPanel.style.display = "block";
+    if(linkRegistro) linkRegistro.style.display = "block";
+    if(linkLogout) linkLogout.style.display = "block";
   } else {
-    linkLogin.style.display = "block";
-    linkPanel.style.display = "none";
-    linkRegistro.style.display = "none";
-    linkLogout.style.display = "none";
+    if(linkLogin) linkLogin.style.display = "block";
+    if(linkPanel) linkPanel.style.display = "none";
+    if(linkRegistro) linkRegistro.style.display = "none";
+    if(linkLogout) linkLogout.style.display = "none";
   }
 
   // Logout manual
@@ -163,11 +162,6 @@ document.addEventListener("DOMContentLoaded", () => {
       window.location.href = "login.html";
     });
   }
-
-  // Hamburguesa
-  const hamburger = document.getElementById("hamburger");
-  const navLinks = document.getElementById("navLinks");
-  hamburger.addEventListener("click", () => navLinks.classList.toggle("show"));
 });
 
 // Eliminar token solo al **cerrar la pestaña**, no al recargar
@@ -177,7 +171,6 @@ window.addEventListener("unload", () => {
   }
 });
 </script>
-
 
 </body>
 </html>

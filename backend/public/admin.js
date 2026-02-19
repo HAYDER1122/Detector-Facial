@@ -1,7 +1,6 @@
 // ----------------- Obtener token -----------------
-const token = localStorage.getItem("token"); // Token solo necesario para panel/admin
-// Si no hay token, bloqueamos panel/admin
-if(!token) location.href = "/login.html";
+const token = localStorage.getItem("token"); 
+if (!token) location.href = "/login.html";
 
 // ----------------- Cargar personas -----------------
 async function cargarPersonas() {
@@ -36,27 +35,23 @@ async function cargarPersonas() {
   }
 }
 
-// ----------------- Cargar registros con sede -----------------
+// ----------------- Cargar registros -----------------
 async function cargarRegistros() {
   try {
     const fecha = document.getElementById("fechaFiltro").value;
     const nombre = document.getElementById("busquedaNombre").value.trim();
+    const sede = document.getElementById("busquedaSede").value.trim();
 
-    // Construimos query params dinámicos
     const params = new URLSearchParams();
-    if(fecha) params.append("fecha", fecha);
-    if(nombre) params.append("nombre", nombre);
+    if (fecha) params.append("fecha", fecha);
+    if (nombre) params.append("nombre", nombre);
+    if (sede) params.append("sede", sede);
 
-    const res = await fetch("/asistencias?" + params.toString(), {
-      headers: { "Authorization": `Bearer ${token}` }
+    const res = await fetch("/asistencias?" + params.toString(), { 
+      headers: { "Authorization": `Bearer ${token}` } 
     });
-
-    if (!res.ok) {
-      console.error("Error al cargar registros:", res.statusText);
-      return;
-    }
-
     const registros = await res.json();
+
     const tbody = document.getElementById("registrosBody");
     tbody.innerHTML = "";
 
@@ -73,20 +68,19 @@ async function cargarRegistros() {
 
     actualizarGrafico(registros);
 
-  } catch(err) {
+  } catch (err) {
     console.error("Error cargando registros:", err);
   }
 }
-
 
 // ----------------- Gráfico entradas/salidas -----------------
 let chart;
 function actualizarGrafico(data) {
   const ctx = document.getElementById("graficoAsistencias");
   const tipos = ["entrada","salida","descanso","entrada_descanso"];
-  const counts = tipos.map(t => data.filter(r => r.tipo===t).length);
+  const counts = tipos.map(t => data.filter(r => r.tipo === t).length);
 
-  if(chart) chart.destroy();
+  if (chart) chart.destroy();
   chart = new Chart(ctx, {
     type: "bar",
     data: {
@@ -97,18 +91,20 @@ function actualizarGrafico(data) {
         backgroundColor: ["#0d6efd","#dc3545","#ffc107","#198754"]
       }]
     },
-    options: { responsive:true, plugins:{ legend:{ display:false } } }
+    options: { responsive: true, plugins: { legend: { display: false } } }
   });
 }
 
 // ----------------- Exportar registros a Excel -----------------
-document.getElementById("exportExcel").addEventListener("click", async () => {
+async function exportarExcel() {
   const fecha = document.getElementById("fechaFiltro").value;
   const nombre = document.getElementById("busquedaNombre").value.trim();
+  const sede = document.getElementById("busquedaSede").value.trim();
 
   const params = new URLSearchParams();
-  if(fecha) params.append("fecha", fecha);
-  if(nombre) params.append("nombre", nombre); // <-- filtrará solo por nombre si fecha vacía
+  if (fecha) params.append("fecha", fecha);
+  if (nombre) params.append("nombre", nombre);
+  if (sede) params.append("sede", sede);
 
   try {
     const res = await fetch("/exportar-registros?" + params.toString(), {
@@ -131,15 +127,17 @@ document.getElementById("exportExcel").addEventListener("click", async () => {
     a.remove();
     window.URL.revokeObjectURL(url);
 
-  } catch(err) {
+  } catch (err) {
     console.error("Error exportando Excel:", err);
     alert("Error descargando el archivo");
   }
-});
+}
 
 // ----------------- Event listeners -----------------
 document.getElementById("fechaFiltro").addEventListener("change", cargarRegistros);
 document.getElementById("busquedaNombre").addEventListener("input", cargarRegistros);
+document.getElementById("busquedaSede").addEventListener("input", cargarRegistros);
+document.getElementById("exportExcel").addEventListener("click", exportarExcel);
 
 // ----------------- Inicializar -----------------
 cargarPersonas();
