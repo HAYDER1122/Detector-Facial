@@ -121,7 +121,7 @@ app.post("/registrar-persona", verificarToken, (req, res) => {
 });
 
 // ----------------- Reconocer y registrar asistencia -----------------
-const FACE_THRESHOLD = 0.55;
+const FACE_THRESHOLD = 0.75; // ajustable según precisión de tu modelo
 
 app.post("/reconocer", (req, res) => {
   try {
@@ -134,34 +134,41 @@ app.post("/reconocer", (req, res) => {
     if (!tipo || !tiposValidos.includes(tipo))
       return res.status(400).send({ ok: false, mensaje: "Tipo inválido" });
 
-    db.query("SELECT * FROM personas WHERE activo=1", (err, personas) => {
+    // Unimos personas activas con sus descriptores
+    db.query(`
+      SELECT p.id, p.nombre, p.sede, d.descriptor
+      FROM personas p
+      JOIN descriptores d ON d.persona_id = p.id
+      WHERE p.activo=1
+    `, (err, filas) => {
       if (err) return res.status(500).send({ ok: false, mensaje: "Error BD" });
 
       let personaCoincidente = null;
       let minDist = 999;
 
-      for (const p of personas) {
+      for (const fila of filas) {
         let desc = null;
-        try { desc = JSON.parse(p.descriptor); } 
+        try { desc = JSON.parse(fila.descriptor); } 
         catch(e){ continue; }
 
         const distancia = euclideanDistance(desc, descriptor);
         if (distancia < minDist) {
           minDist = distancia;
-          personaCoincidente = p;
+          personaCoincidente = fila;
         }
       }
 
-      if (!personaCoincidente || minDist > 0.75)
+      if (!personaCoincidente || minDist > FACE_THRESHOLD)
         return res.send({ ok: false, mensaje: "Rostro no reconocido" });
 
+      // Verificar registros del día
       const sqlHoy = `SELECT * FROM registros WHERE nombre=? AND DATE(fecha)=CURDATE()`;
       db.query(sqlHoy, [personaCoincidente.nombre], (err2, registros) => {
         if (err2) return res.status(500).send({ ok: false, mensaje: "Error BD" });
 
         const accionesHoy = registros.map(r => r.tipo);
 
-        // Validación lógica
+        // Validación lógica de tipo
         if (tipo === "entrada" && accionesHoy.includes("entrada"))
           return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
         if (tipo === "salida" && !accionesHoy.includes("entrada"))
@@ -177,6 +184,7 @@ app.post("/reconocer", (req, res) => {
         if (tipo === "entrada_descanso" && accionesHoy.includes("entrada_descanso"))
           return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
 
+        // Insertar registro
         db.query(
           "INSERT INTO registros (nombre, tipo) VALUES (?, ?)",
           [personaCoincidente.nombre, tipo],
