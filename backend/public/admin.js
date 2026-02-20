@@ -1,4 +1,4 @@
-// admin.js - Panel administrativo corregido y optimizado
+// admin.js - Panel administrativo optimizado con búsqueda global
 document.addEventListener("DOMContentLoaded", () => {
 
   const token = localStorage.getItem("token");
@@ -43,54 +43,52 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch(e){ console.error("Error cargando personas:", e); }
   }
 
+  // ---------------- CARGAR REGISTROS ----------------
   async function cargarRegistros() {
-  try {
-    const fecha = fechaFiltro.value;
-    const busqueda = busquedaGeneral.value.trim().toLowerCase();
-    const params = new URLSearchParams();
+    try {
+      const fecha = fechaFiltro.value;
+      const busqueda = busquedaGeneral.value.trim().toLowerCase();
+      const params = new URLSearchParams();
 
-    if (fecha) params.append("fecha", fecha);
+      if (fecha) params.append("fecha", fecha);
+      if (busqueda) params.append("busqueda", busqueda); // búsqueda global
 
-    // Si hay búsqueda, enviamos como un solo parámetro 'busqueda' al backend
-    if (busqueda) params.append("busqueda", busqueda);
-
-    const res = await fetch("/asistencias?" + params.toString(), {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-
-    if (!res.ok) {
-      console.error("Error al cargar registros:", res.statusText);
-      registrosBody.innerHTML = `<tr><td colspan="4">No se pudieron cargar los registros.</td></tr>`;
-      return;
-    }
-
-    const registros = await res.json();
-    registrosBody.innerHTML = "";
-
-    if (registros.length === 0) {
-      registrosBody.innerHTML = `<tr><td colspan="4">No hay registros que coincidan con los filtros.</td></tr>`;
-    } else {
-      registros.forEach(r => {
-        const tr = document.createElement("tr");
-        tr.className = r.tipo;
-        tr.innerHTML = `
-          <td>${r.nombre}</td>
-          <td>${r.sede}</td>
-          <td>${r.tipo}</td>
-          <td>${new Date(r.fecha).toLocaleString()}</td>
-        `;
-        registrosBody.appendChild(tr);
+      const res = await fetch("/asistencias?" + params.toString(), {
+        headers: { "Authorization": `Bearer ${token}` }
       });
+
+      if (!res.ok) {
+        console.error("Error al cargar registros:", res.statusText);
+        registrosBody.innerHTML = `<tr><td colspan="4">No se pudieron cargar los registros.</td></tr>`;
+        return;
+      }
+
+      const registros = await res.json();
+      registrosBody.innerHTML = "";
+
+      if (registros.length === 0) {
+        registrosBody.innerHTML = `<tr><td colspan="4">No hay registros que coincidan con los filtros.</td></tr>`;
+      } else {
+        registros.forEach(r => {
+          const tr = document.createElement("tr");
+          tr.className = r.tipo;
+          tr.innerHTML = `
+            <td>${r.nombre}</td>
+            <td>${r.sede}</td>
+            <td>${r.tipo}</td>
+            <td>${new Date(r.fecha).toLocaleString()}</td>
+          `;
+          registrosBody.appendChild(tr);
+        });
+      }
+
+      actualizarGrafico(registros);
+
+    } catch (e) {
+      console.error("Error cargando registros:", e);
+      registrosBody.innerHTML = `<tr><td colspan="4">Ocurrió un error al cargar los registros.</td></tr>`;
     }
-
-    // Actualizamos gráfico
-    actualizarGrafico(registros);
-
-  } catch (e) {
-    console.error("Error cargando registros:", e);
-    registrosBody.innerHTML = `<tr><td colspan="4">Ocurrió un error al cargar los registros.</td></tr>`;
   }
-}
 
   // ---------------- ACTUALIZAR GRÁFICO ----------------
   function actualizarGrafico(data){
@@ -98,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const tipos = ["entrada","salida","descanso_salida","descanso_entrada"];
     const counts = tipos.map(t => data.filter(r => r.tipo===t).length);
 
-    if(chart) chart.destroy(); // Evitar error "canvas already in use"
+    if(chart) chart.destroy();
     chart = new Chart(ctx, {
       type:"bar",
       data:{
@@ -119,11 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const busqueda = busquedaGeneral.value.trim().toLowerCase();
     const params = new URLSearchParams();
     if(fecha) params.append("fecha", fecha);
-    if(busqueda){
-      params.append("nombre", busqueda);
-      params.append("sede", busqueda);
-      params.append("tipo", busqueda);
-    }
+    if(busqueda) params.append("busqueda", busqueda); // ← búsqueda global
 
     const res = await fetch("/exportar-registros?" + params.toString(), {
       headers:{ "Authorization": `Bearer ${token}` }

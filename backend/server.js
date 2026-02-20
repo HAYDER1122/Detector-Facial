@@ -339,42 +339,32 @@ app.get("/", (req,res)=>{
   res.sendFile(path.join(__dirname,"public/login.html"));
 });
 
-// Endpoint asistencias para admin.js con filtro unificado
-app.get("/asistencias", verificarToken, (req, res) => {
-  const { fecha, nombre, sede, tipo } = req.query;
+const { fecha, busqueda } = req.query;
 
-  let sql = `
-    SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
-    FROM registros r
-    JOIN personas p ON r.persona_id = p.id
-    WHERE 1=1
-  `;
-  const params = [];
+let sql = `
+  SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
+  FROM registros r
+  JOIN personas p ON r.persona_id = p.id
+  WHERE 1=1
+`;
+const params = [];
 
-  if(fecha){ 
-    sql += " AND DATE(r.fecha_hora) = ?"; 
-    params.push(fecha); 
-  }
-  if(nombre){ 
-    sql += " AND p.nombre LIKE ?"; 
-    params.push(`%${nombre}%`); 
-  }
-  if(sede){ 
-    sql += " AND p.sede LIKE ?"; 
-    params.push(`%${sede}%`); 
-  }
-  if(tipo){ 
-    sql += " AND r.tipo LIKE ?"; 
-    params.push(`%${tipo}%`); 
-  }
+if(fecha){ 
+  sql += " AND DATE(r.fecha_hora) = ?"; 
+  params.push(fecha); 
+}
 
-  sql += " ORDER BY r.fecha_hora DESC";
+if(busqueda){ 
+  sql += ` AND (
+    p.nombre LIKE ? OR 
+    p.sede LIKE ? OR 
+    r.tipo LIKE ?
+  )`;
+  const like = `%${busqueda}%`;
+  params.push(like, like, like);
+}
 
-  db.query(sql, params, (err, rows) => {
-    if(err) return res.status(500).send([]);
-    res.send(rows);
-  });
-});
+sql += " ORDER BY r.fecha_hora DESC";
 // ----------------- Iniciar servidor -----------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT,'0.0.0.0',()=>console.log("Servidor activo en puerto " + PORT));
