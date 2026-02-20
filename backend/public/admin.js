@@ -77,7 +77,7 @@ async function cargarRegistros() {
 let chart;
 function actualizarGrafico(data) {
   const ctx = document.getElementById("graficoAsistencias");
-  const tipos = ["entrada","salida","descanso","entrada_descanso"];
+  const tipos = ["entrada","salida","descanso_salida","descanso_entrada"];
   const counts = tipos.map(t => data.filter(r => r.tipo === t).length);
 
   if (chart) chart.destroy();
