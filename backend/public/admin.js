@@ -1,4 +1,4 @@
-// admin.js - Panel administrativo optimizado
+// admin.js - Panel administrativo corregido y optimizado
 document.addEventListener("DOMContentLoaded", () => {
 
   const token = localStorage.getItem("token");
@@ -50,20 +50,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const busqueda = busquedaGeneral.value.trim().toLowerCase();
       const params = new URLSearchParams();
       if(fecha) params.append("fecha", fecha);
+      if(busqueda){
+        // Enviamos los tres filtros al backend
+        params.append("nombre", busqueda);
+        params.append("sede", busqueda);
+        params.append("tipo", busqueda);
+      }
 
       const res = await fetch("/asistencias?" + params.toString(), {
         headers:{ "Authorization": `Bearer ${token}` }
       });
-      let registros = await res.json();
 
-      // Filtro unificado: nombre, sede o tipo
-      if(busqueda){
-        registros = registros.filter(r =>
-          r.nombre.toLowerCase().includes(busqueda) ||
-          r.sede.toLowerCase().includes(busqueda) ||
-          r.tipo.toLowerCase().includes(busqueda)
-        );
-      }
+      const registros = await res.json();
 
       // Render tabla
       registrosBody.innerHTML = "";
@@ -112,7 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const busqueda = busquedaGeneral.value.trim().toLowerCase();
     const params = new URLSearchParams();
     if(fecha) params.append("fecha", fecha);
-    if(busqueda){ 
+    if(busqueda){
       params.append("nombre", busqueda);
       params.append("sede", busqueda);
       params.append("tipo", busqueda);

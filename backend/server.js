@@ -339,9 +339,10 @@ app.get("/", (req,res)=>{
   res.sendFile(path.join(__dirname,"public/login.html"));
 });
 
-// ----------------- Endpoint asistencias para admin.js -----------------
+// Endpoint asistencias para admin.js con filtro unificado
 app.get("/asistencias", verificarToken, (req, res) => {
-  const { fecha, nombre, sede } = req.query;
+  const { fecha, nombre, sede, tipo } = req.query;
+
   let sql = `
     SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
     FROM registros r
@@ -349,17 +350,31 @@ app.get("/asistencias", verificarToken, (req, res) => {
     WHERE 1=1
   `;
   const params = [];
-  if(fecha){ sql += " AND DATE(r.fecha_hora)=?"; params.push(fecha); }
-  if(nombre){ sql += " AND p.nombre LIKE ?"; params.push(`%${nombre}%`); }
-  if(sede){ sql += " AND p.sede LIKE ?"; params.push(`%${sede}%`); }
+
+  if(fecha){ 
+    sql += " AND DATE(r.fecha_hora) = ?"; 
+    params.push(fecha); 
+  }
+  if(nombre){ 
+    sql += " AND p.nombre LIKE ?"; 
+    params.push(`%${nombre}%`); 
+  }
+  if(sede){ 
+    sql += " AND p.sede LIKE ?"; 
+    params.push(`%${sede}%`); 
+  }
+  if(tipo){ 
+    sql += " AND r.tipo LIKE ?"; 
+    params.push(`%${tipo}%`); 
+  }
+
   sql += " ORDER BY r.fecha_hora DESC";
 
-  db.query(sql, params, (err, rows)=>{
+  db.query(sql, params, (err, rows) => {
     if(err) return res.status(500).send([]);
     res.send(rows);
   });
 });
-
 // ----------------- Iniciar servidor -----------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT,'0.0.0.0',()=>console.log("Servidor activo en puerto " + PORT));
