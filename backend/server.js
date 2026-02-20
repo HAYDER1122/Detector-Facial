@@ -86,25 +86,61 @@ app.post("/login", (req, res) => {
   });
 });
 
-// ----------------- Registrar Persona -----------------
+
 app.post("/registrar-persona", verificarToken, (req, res) => {
-  if (req.user.role !== "admin") return res.status(403).send({ msg: "No autorizado" });
+  if (req.user.role !== "admin")
+    return res.status(403).send({ msg: "No autorizado" });
 
   const { nombre, sede, descriptors } = req.body;
-  if (!nombre || !sede || !descriptors || !Array.isArray(descriptors) || descriptors.length === 0)
+
+  if (!nombre || !sede || !descriptors || !Array.isArray(descriptors))
     return res.status(400).send({ msg: "Datos incompletos" });
 
-  db.query("INSERT INTO personas (nombre, sede, activo) VALUES (?, ?, 1)", [nombre, sede], (err, result) => {
-    if (err) return res.status(500).send({ msg: "Error guardando persona" });
+  const nuevoDescriptor = descriptors[0];
 
-    const personaId = result.insertId;
-    const values = descriptors.map(d => [personaId, JSON.stringify(d)]);
-    db.query("INSERT INTO descriptores (persona_id, descriptor) VALUES ?", [values], err2 => {
-      if (err2) return res.status(500).send({ msg: "Error guardando descriptores" });
-      res.send({ msg: "Persona registrada correctamente ✅" });
-    });
+  // 🔎 1. Traer todos los descriptores existentes
+  db.query("SELECT descriptor FROM descriptores", (err, rows) => {
+    if (err) return res.status(500).send({ msg: "Error BD" });
+
+    for (const row of rows) {
+      try {
+        const descriptorGuardado = JSON.parse(row.descriptor);
+        const dist = euclideanDistance(descriptorGuardado, nuevoDescriptor);
+
+        // 🚨 Si ya existe un rostro parecido, bloquear
+        if (dist < 0.6) {
+          return res.status(400).send({
+            msg: "Este rostro ya está registrado en el sistema"
+          });
+        }
+      } catch {}
+    }
+
+    // ✅ 2. Si no existe, guardar persona
+    db.query(
+      "INSERT INTO personas (nombre, sede, activo) VALUES (?, ?, 1)",
+      [nombre, sede],
+      (err2, result) => {
+        if (err2) return res.status(500).send({ msg: "Error guardando persona" });
+
+        const personaId = result.insertId;
+        const values = descriptors.map(d => [personaId, JSON.stringify(d)]);
+
+        db.query(
+          "INSERT INTO descriptores (persona_id, descriptor) VALUES ?",
+          [values],
+          err3 => {
+            if (err3)
+              return res.status(500).send({ msg: "Error guardando descriptores" });
+
+            res.send({ msg: "Persona registrada correctamente ✅" });
+          }
+        );
+      }
+    );
   });
 });
+
 
 // ----------------- Reconocer y registrar asistencia -----------------
 const FACE_THRESHOLD = 0.75;
