@@ -1,144 +1,136 @@
-// ----------------- Obtener token -----------------
-const token = localStorage.getItem("token"); 
-if (!token) location.href = "/login.html";
+const token = localStorage.getItem("token");
+const registrosBody = document.getElementById("registrosBody");
+const fechaFiltro = document.getElementById("fechaFiltro");
+const busquedaNombre = document.getElementById("busquedaNombre");
+const busquedaSede = document.getElementById("busquedaSede");
+const exportBtn = document.getElementById("exportExcel");
 
-// ----------------- Cargar personas -----------------
-async function cargarPersonas() {
-  try {
-    const res = await fetch("/personas", {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    const personas = await res.json();
-    const tbody = document.getElementById("personasBody");
-    tbody.innerHTML = "";
+let grafico;
 
-    personas.forEach(p => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${p.nombre}</td>
-        <td>${p.sede}</td>
-        <td>${p.activo ? "Sí" : "No"}</td>
-        <td><button class="btn btn-sm btn-primary toggleBtn">Toggle</button></td>
-      `;
-      tr.querySelector(".toggleBtn").addEventListener("click", async () => {
-        await fetch(`/personas/${p.id}/toggle`, {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        cargarPersonas();
-      });
-      tbody.appendChild(tr);
-    });
+// =====================
+// CARGAR ASISTENCIAS
+// =====================
+async function cargarAsistencias() {
+  const fecha = fechaFiltro.value;
+  const nombre = busquedaNombre.value.trim();
+  const sede = busquedaSede.value.trim();
 
-  } catch (err) {
-    console.error("Error cargando personas:", err);
-  }
+  let url = "/asistencias?";
+  const params = [];
+
+  if (fecha) params.push("fecha=" + fecha);
+  if (nombre) params.push("nombre=" + encodeURIComponent(nombre));
+  if (sede) params.push("sede=" + encodeURIComponent(sede));
+
+  url += params.join("&");
+
+  const res = await fetch(url, {
+    headers: {
+      "Authorization": "Bearer " + token
+    }
+  });
+
+  const data = await res.json();
+  renderTabla(data);
+  renderGrafico(data);
 }
 
-// ----------------- Cargar registros -----------------
-async function cargarRegistros() {
-  try {
-    const fecha = document.getElementById("fechaFiltro").value;
-    const nombre = document.getElementById("busquedaNombre").value.trim();
-    const sede = document.getElementById("busquedaSede").value.trim();
+// =====================
+// RENDER TABLA
+// =====================
+function renderTabla(data) {
+  registrosBody.innerHTML = "";
 
-    const params = new URLSearchParams();
-    if (fecha) params.append("fecha", fecha);
-    if (nombre) params.append("nombre", nombre);
-    if (sede) params.append("sede", sede);
-
-    const res = await fetch("/asistencias?" + params.toString(), { 
-      headers: { "Authorization": `Bearer ${token}` } 
-    });
-    const registros = await res.json();
-
-    const tbody = document.getElementById("registrosBody");
-    tbody.innerHTML = "";
-
-    registros.forEach(r => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
+  data.forEach(r => {
+    registrosBody.innerHTML += `
+      <tr>
         <td>${r.nombre}</td>
         <td>${r.sede}</td>
         <td>${r.tipo}</td>
         <td>${new Date(r.fecha).toLocaleString()}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-
-    actualizarGrafico(registros);
-
-  } catch (err) {
-    console.error("Error cargando registros:", err);
-  }
-}
-
-// ----------------- Gráfico entradas/salidas -----------------
-let chart;
-function actualizarGrafico(data) {
-  const ctx = document.getElementById("graficoAsistencias");
-  const tipos = ["entrada","salida","descanso_salida","descanso_entrada"];
-  const counts = tipos.map(t => data.filter(r => r.tipo === t).length);
-
-  if (chart) chart.destroy();
-  chart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: tipos,
-      datasets: [{
-        label: "Cantidad",
-        data: counts,
-        backgroundColor: ["#0d6efd","#dc3545","#ffc107","#198754"]
-      }]
-    },
-    options: { responsive: true, plugins: { legend: { display: false } } }
+      </tr>
+    `;
   });
 }
 
-// ----------------- Exportar registros a Excel -----------------
-async function exportarExcel() {
-  const fecha = document.getElementById("fechaFiltro").value;
-  const nombre = document.getElementById("busquedaNombre").value.trim();
-  const sede = document.getElementById("busquedaSede").value.trim();
+// =====================
+// RENDER GRAFICO
+// =====================
+function renderGrafico(data) {
+  const conteo = {
+    entrada: 0,
+    salida: 0,
+    descanso_salida: 0,
+    descanso_entrada: 0
+  };
 
-  const params = new URLSearchParams();
-  if (fecha) params.append("fecha", fecha);
-  if (nombre) params.append("nombre", nombre);
-  if (sede) params.append("sede", sede);
-
-  try {
-    const res = await fetch("/exportar-registros?" + params.toString(), {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      alert(data.msg || "Error al exportar");
-      return;
+  data.forEach(r => {
+    if (conteo[r.tipo] !== undefined) {
+      conteo[r.tipo]++;
     }
+  });
 
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "registros.xlsx";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
+  const ctx = document.getElementById("graficoAsistencias").getContext("2d");
 
-  } catch (err) {
-    console.error("Error exportando Excel:", err);
-    alert("Error descargando el archivo");
-  }
+  if (grafico) grafico.destroy();
+
+  grafico = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: ["Entrada", "Salida", "Descanso Salida", "Descanso Entrada"],
+      datasets: [{
+        label: "Cantidad",
+        data: [
+          conteo.entrada,
+          conteo.salida,
+          conteo.descanso_salida,
+          conteo.descanso_entrada
+        ],
+        backgroundColor: [
+          "#00ffcc",
+          "#ff6384",
+          "#ffcd56",
+          "#36a2eb"
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
 }
 
-// ----------------- Event listeners -----------------
-document.getElementById("fechaFiltro").addEventListener("change", cargarRegistros);
-document.getElementById("busquedaNombre").addEventListener("input", cargarRegistros);
-document.getElementById("busquedaSede").addEventListener("input", cargarRegistros);
-document.getElementById("exportExcel").addEventListener("click", exportarExcel);
+// =====================
+// EXPORTAR EXCEL
+// =====================
+exportBtn.addEventListener("click", () => {
+  const fecha = fechaFiltro.value;
+  const nombre = busquedaNombre.value.trim();
+  const sede = busquedaSede.value.trim();
 
-// ----------------- Inicializar -----------------
-cargarPersonas();
-cargarRegistros();
+  let url = "/exportar-registros?";
+  const params = [];
+
+  if (fecha) params.push("fecha=" + fecha);
+  if (nombre) params.push("nombre=" + encodeURIComponent(nombre));
+  if (sede) params.push("sede=" + encodeURIComponent(sede));
+
+  url += params.join("&");
+
+  window.open(url, "_blank");
+});
+
+// =====================
+// FILTROS REACTIVOS
+// =====================
+fechaFiltro.addEventListener("change", cargarAsistencias);
+busquedaNombre.addEventListener("input", cargarAsistencias);
+busquedaSede.addEventListener("input", cargarAsistencias);
+
+// =====================
+// INICIALIZAR
+// =====================
+cargarAsistencias();

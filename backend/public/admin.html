@@ -5,6 +5,7 @@
 <title>Panel Administrativo</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
@@ -12,7 +13,6 @@ body {
   color: white;
 }
 
-/* Navbar personalizada */
 .navbar-custom {
   background-color: #111827;
 }
@@ -77,16 +77,24 @@ if (!localStorage.getItem("token")) {
 </button>
 
 <!-- Filtros -->
-<div class="mb-3">
-  <input type="date" id="fechaFiltro" class="form-control mb-2" />
-  <input type="text" id="busquedaNombre" placeholder="Buscar por nombre" class="form-control mb-2" />
-  <input type="text" id="busquedaSede" placeholder="Buscar por sede" class="form-control mb-2" />
+<div class="card bg-dark p-3 mb-4">
+  <div class="row g-2">
+    <div class="col-md-4">
+      <input type="date" id="fechaFiltro" class="form-control" />
+    </div>
+    <div class="col-md-4">
+      <input type="text" id="busquedaNombre" placeholder="Buscar por nombre" class="form-control" />
+    </div>
+    <div class="col-md-4">
+      <input type="text" id="busquedaSede" placeholder="Buscar por sede" class="form-control" />
+    </div>
+  </div>
 </div>
 
 <!-- Tabla registros -->
 <h4>Registros de Asistencia</h4>
 <div class="table-responsive">
-<table class="table table-striped table-dark">
+<table class="table table-striped table-dark align-middle">
   <thead>
     <tr>
       <th>Nombre</th>
@@ -100,13 +108,15 @@ if (!localStorage.getItem("token")) {
 </div>
 
 <!-- Gráfico -->
-<h4 class="mt-5">Gráfico Entradas/Salidas</h4>
-<canvas id="graficoAsistencias" height="100"></canvas>
+<h4 class="mt-5">Gráfico Entradas / Salidas / Descansos</h4>
+<div class="card bg-dark p-3">
+  <canvas id="graficoAsistencias"></canvas>
+</div>
 
 <!-- Tabla personas -->
 <h4 class="mt-5">Personas Registradas</h4>
 <div class="table-responsive">
-<table class="table table-bordered table-dark">
+<table class="table table-bordered table-dark align-middle">
   <thead>
     <tr>
       <th>Nombre</th>
@@ -121,56 +131,17 @@ if (!localStorage.getItem("token")) {
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="admin.js"></script>
-
 <script>
-// 🚪 Logout
+// 🚪 Logout limpio
 document.getElementById("logoutBtn").addEventListener("click", function(e) {
   e.preventDefault();
   localStorage.removeItem("token");
   window.location.href = "login.html";
 });
-
-document.addEventListener("DOMContentLoaded", () => {
-  const token = localStorage.getItem("token");
-
-  const linkLogin = document.getElementById("linkLogin");
-  const linkPanel = document.getElementById("linkPanel");
-  const linkRegistro = document.getElementById("linkRegistro");
-  const linkLogout = document.getElementById("linkLogout");
-  const logoutBtn = document.getElementById("logoutBtn");
-
-  // Mostrar / ocultar menú según sesión
-  if (token) {
-    if(linkLogin) linkLogin.style.display = "none";
-    if(linkPanel) linkPanel.style.display = "block";
-    if(linkRegistro) linkRegistro.style.display = "block";
-    if(linkLogout) linkLogout.style.display = "block";
-  } else {
-    if(linkLogin) linkLogin.style.display = "block";
-    if(linkPanel) linkPanel.style.display = "none";
-    if(linkRegistro) linkRegistro.style.display = "none";
-    if(linkLogout) linkLogout.style.display = "none";
-  }
-
-  // Logout manual
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      localStorage.removeItem("token");
-      window.location.href = "login.html";
-    });
-  }
-});
-
-// Eliminar token solo al **cerrar la pestaña**, no al recargar
-window.addEventListener("unload", () => {
-  if (!document.hidden) { // Se dispara al cerrar la pestaña
-    localStorage.removeItem("token");
-  }
-});
 </script>
+
+<script src="admin.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>
