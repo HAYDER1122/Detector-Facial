@@ -24,7 +24,6 @@ if (!localStorage.getItem("token")) window.location.href = "login.html";
 </head>
 <body>
 
-<!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg navbar-custom mb-4">
   <div class="container-fluid">
     <a class="navbar-brand" href="index.html">Control Biométrico</a>
@@ -42,19 +41,15 @@ if (!localStorage.getItem("token")) window.location.href = "login.html";
 </nav>
 
 <div class="container">
-
 <h2 class="mb-4">Panel Administrativo Avanzado</h2>
 
-<!-- Exportar Excel -->
 <button id="exportExcel" class="btn btn-success mb-3">Exportar Registros a Excel</button>
 
-<!-- Filtros -->
 <div class="mb-3">
   <input type="date" id="fechaFiltro" class="form-control mb-2" />
   <input type="text" id="busquedaGeneral" placeholder="Buscar por nombre, sede o tipo" class="form-control" />
 </div>
 
-<!-- Tabla registros -->
 <h4>Registros de Asistencia</h4>
 <div class="table-responsive">
 <table class="table table-striped table-dark">
@@ -70,11 +65,9 @@ if (!localStorage.getItem("token")) window.location.href = "login.html";
 </table>
 </div>
 
-<!-- Gráfico -->
 <h4 class="mt-5">Gráfico Entradas/Salidas</h4>
 <canvas id="graficoAsistencias" height="100"></canvas>
 
-<!-- Tabla personas -->
 <h4 class="mt-5">Personas Registradas</h4>
 <div class="table-responsive">
 <table class="table table-bordered table-dark">
@@ -89,80 +82,71 @@ if (!localStorage.getItem("token")) window.location.href = "login.html";
   <tbody id="personasBody"></tbody>
 </table>
 </div>
-
 </div>
 
-<script src="admin.js"></script>
 <script>
-// ---------------- LOGOUT ----------------
-document.getElementById("logoutBtn").addEventListener("click", e => {
-  e.preventDefault();
-  localStorage.removeItem("token");
-  window.location.href = "login.html";
-});
-
-// ----------------- PANEL FUNCIONES -----------------
 const token = localStorage.getItem("token");
+const fechaFiltro = document.getElementById("fechaFiltro");
+const busquedaGeneral = document.getElementById("busquedaGeneral");
+const registrosBody = document.getElementById("registrosBody");
 let chart;
 
-// Función para cargar personas
-async function cargarPersonas() {
-  try {
-    const res = await fetch("/personas", { headers: { "Authorization": `Bearer ${token}` } });
+// ---------------- LOGOUT ----------------
+document.getElementById("logoutBtn").addEventListener("click", e=>{
+  e.preventDefault();
+  localStorage.removeItem("token");
+  window.location.href="login.html";
+});
+
+// ---------------- FUNCIONES ----------------
+async function cargarPersonas(){
+  try{
+    const res = await fetch("/personas",{ headers:{ "Authorization": `Bearer ${token}` }});
     const personas = await res.json();
     const tbody = document.getElementById("personasBody");
     tbody.innerHTML = "";
-    personas.forEach(p => {
+    personas.forEach(p=>{
       const tr = document.createElement("tr");
-      tr.innerHTML = `
+      tr.innerHTML=`
         <td>${p.nombre}</td>
         <td>${p.sede}</td>
-        <td>${p.activo ? "Sí" : "No"}</td>
+        <td>${p.activo?"Sí":"No"}</td>
         <td><button class="btn btn-sm btn-primary toggleBtn">Toggle</button></td>
       `;
-      tr.querySelector(".toggleBtn").addEventListener("click", async () => {
-        await fetch(`/personas/${p.id}/toggle`, { method: "POST", headers:{ "Authorization": `Bearer ${token}` } });
+      tr.querySelector(".toggleBtn").addEventListener("click", async ()=>{
+        await fetch(`/personas/${p.id}/toggle`,{ method:"POST", headers:{ "Authorization": `Bearer ${token}` }});
         cargarPersonas();
       });
       tbody.appendChild(tr);
     });
-  } catch(e) { console.error("Error cargando personas:", e); }
+  }catch(e){ console.error("Error cargando personas:", e);}
 }
 
-// Función para cargar registros y filtrar por búsqueda unificada
-async function cargarRegistros() {
-  try {
+async function cargarRegistros(){
+  try{
     const fecha = fechaFiltro.value;
     const busqueda = busquedaGeneral.value.trim().toLowerCase();
     const params = new URLSearchParams();
-    if(fecha) params.append("fecha", fecha);
+    if(fecha) params.append("fecha",fecha);
+    if(busqueda){ params.append("nombre",busqueda); params.append("sede",busqueda); }
 
-    // Solo enviar nombre y sede al backend
-    if(busqueda) {
-      params.append("nombre", busqueda);
-      params.append("sede", busqueda);
-    }
-
-    const res = await fetch("/asistencias?" + params.toString(), { 
-      headers:{ "Authorization": `Bearer ${token}` } 
-    });
+    const res = await fetch("/asistencias?"+params.toString(),{ headers:{ "Authorization": `Bearer ${token}` }});
     let registros = await res.json();
 
-    // FILTRO UNIFICADO en frontend
-    if(busqueda) {
-      registros = registros.filter(r => 
-        r.nombre.toLowerCase().includes(busqueda) ||
-        r.sede.toLowerCase().includes(busqueda) ||
+    // Filtrado frontend unificado
+    if(busqueda){
+      registros = registros.filter(r=> 
+        r.nombre.toLowerCase().includes(busqueda)||
+        r.sede.toLowerCase().includes(busqueda)||
         r.tipo.toLowerCase().includes(busqueda)
       );
     }
 
-    // Render tabla
     registrosBody.innerHTML = "";
-    registros.forEach(r => {
+    registros.forEach(r=>{
       const tr = document.createElement("tr");
-      tr.className = r.tipo;
-      tr.innerHTML = `
+      tr.className=r.tipo;
+      tr.innerHTML=`
         <td>${r.nombre}</td>
         <td>${r.sede}</td>
         <td>${r.tipo}</td>
@@ -171,51 +155,45 @@ async function cargarRegistros() {
       registrosBody.appendChild(tr);
     });
 
-    // Render gráfico
     actualizarGrafico(registros);
-
-  } catch(e){ console.error("Error cargando registros:", e); }
+  }catch(e){ console.error("Error cargando registros:", e);}
 }
-// Función para actualizar gráfico
+
 function actualizarGrafico(data){
-  const ctx = document.getElementById("graficoAsistencias");
-  const tipos = ["entrada","salida","descanso_salida","descanso_entrada"];
-  const counts = tipos.map(t => data.filter(r => r.tipo === t).length);
+  const ctx=document.getElementById("graficoAsistencias").getContext("2d");
+  const tipos=["entrada","salida","descanso_salida","descanso_entrada"];
+  const counts = tipos.map(t=>data.filter(r=>r.tipo===t).length);
   if(chart) chart.destroy();
-  chart = new Chart(ctx, {
-    type: "bar",
-    data:{ labels: tipos, datasets:[{label:"Cantidad", data:counts, backgroundColor:["#0d6efd","#dc3545","#ffc107","#198754"]}]},
+  chart=new Chart(ctx,{
+    type:"bar",
+    data:{ labels:["Entrada","Salida","Descanso Salida","Descanso Entrada"], datasets:[{label:"Cantidad", data:counts, backgroundColor:["#0d6efd","#dc3545","#ffc107","#198754"]}]},
     options:{ responsive:true, plugins:{ legend:{ display:false } } }
   });
 }
 
-// Exportar Excel con filtros aplicados
-document.getElementById("exportExcel").addEventListener("click", async () => {
-  const fecha = document.getElementById("fechaFiltro").value;
-  const busqueda = document.getElementById("busquedaGeneral").value.trim();
+// Exportar Excel
+document.getElementById("exportExcel").addEventListener("click", async ()=>{
+  const fecha = fechaFiltro.value;
+  const busqueda = busquedaGeneral.value.trim().toLowerCase();
   const params = new URLSearchParams();
-  if(fecha) params.append("fecha", fecha);
-  if(busqueda) { params.append("nombre", busqueda); params.append("sede", busqueda); params.append("tipo", busqueda.toLowerCase()); }
+  if(fecha) params.append("fecha",fecha);
+  if(busqueda){ params.append("nombre",busqueda); params.append("sede",busqueda); }
 
-  const res = await fetch("/exportar-registros?" + params.toString(), { headers: { "Authorization": `Bearer ${token}` } });
-  if(!res.ok){ const data = await res.json(); alert(data.msg || "Error al exportar"); return; }
+  const res = await fetch("/exportar-registros?"+params.toString(),{ headers:{ "Authorization": `Bearer ${token}` }});
+  if(!res.ok){ const data=await res.json(); alert(data.msg||"Error al exportar"); return; }
   const blob = await res.blob();
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = "registros.xlsx";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  a.href=url; a.download="registros.xlsx"; document.body.appendChild(a); a.click(); a.remove();
   window.URL.revokeObjectURL(url);
 });
 
-// ---------------- EVENTOS INPUTS ----------------
-document.getElementById("fechaFiltro").addEventListener("input", cargarRegistros);
-document.getElementById("busquedaGeneral").addEventListener("input", cargarRegistros);
+// Eventos filtros
+fechaFiltro.addEventListener("input",cargarRegistros);
+busquedaGeneral.addEventListener("input",cargarRegistros);
 
-// ---------------- INICIALIZAR ----------------
-window.addEventListener("load", () => {
+// Inicializar
+window.addEventListener("load",()=>{
   cargarPersonas();
   cargarRegistros();
 });
