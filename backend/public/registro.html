@@ -157,65 +157,60 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 <script>
-// ---------- Registrar persona corregido ----------
-btnRegistrar.addEventListener("click", async () => {
-  const nombre = document.getElementById("nombre").value.trim();
-  const sede = document.getElementById("sede").value.trim();
-  const token = localStorage.getItem("token");
+app.post("/registrar-persona", verificarToken, (req, res) => {
+  if (req.user.role !== "admin")
+    return res.status(403).send({ msg: "No autorizado" });
 
-  if (!nombre || !sede) {
-    mensaje.innerText = "Completa todos los campos";
-    mensaje.style.color = "red";
-    return;
-  }
+  const { nombre, sede, descriptors } = req.body;
 
-  if (!token) {
-    mensaje.innerText = "Debes iniciar sesión primero";
-    mensaje.style.color = "red";
-    return;
-  }
+  if (!nombre || !sede || !descriptors || !Array.isArray(descriptors))
+    return res.status(400).send({ msg: "Datos incompletos" });
 
-  mensaje.innerText = "Capturando rostro...";
-  mensaje.style.color = "orange";
+  const nuevoDescriptor = descriptors[0];
 
-  const descriptor = await capturarDescriptor();
-  if (!descriptor) return;
+  // 🔎 1. Traer todos los descriptores existentes
+  db.query("SELECT descriptor FROM descriptores", (err, rows) => {
+    if (err) return res.status(500).send({ msg: "Error BD" });
 
-  try {
-    // 🔹 Enviar como array 'descriptors' para que coincida con backend
-    const bodyToSend = {
-      nombre,
-      sede,
-      descriptors: [descriptor] // ✅ envolver en array
-    };
+    for (const row of rows) {
+      try {
+        const descriptorGuardado = JSON.parse(row.descriptor);
+        const dist = euclideanDistance(descriptorGuardado, nuevoDescriptor);
 
-    console.log("Enviando al servidor:", bodyToSend); // Para debug
-
-    const res = await fetch("/registrar-persona", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
-      },
-      body: JSON.stringify(bodyToSend)
-    });
-
-    const data = await res.json();
-
-    mensaje.innerText = data.msg || "Error al registrar";
-    mensaje.style.color = res.ok ? "#00ffcc" : "red";
-
-    if (res.ok) {
-      document.getElementById("nombre").value = "";
-      document.getElementById("sede").value = "";
+        // 🚨 Si ya existe un rostro parecido, bloquear
+        if (dist < 0.6) {
+          return res.status(400).send({
+            msg: "Este rostro ya está registrado en el sistema"
+          });
+        }
+      } catch {}
     }
 
-  } catch (err) {
-    console.error(err);
-    mensaje.innerText = "Error servidor";
-    mensaje.style.color = "red";
-  }
+    // ✅ 2. Si no existe, guardar persona
+    db.query(
+      "INSERT INTO personas (nombre, sede, activo) VALUES (?, ?, 1)",
+      [nombre, sede],
+      (err2, result) => {
+        if (err2) return res.status(500).send({ msg: "Error guardando persona" });
+
+        const personaId = result.insertId;
+        const values = descriptors.map(d => [personaId, JSON.stringify(d)]);
+
+        db.query(
+          "INSERT INTO descriptores (persona_id, descriptor) VALUES ?",
+          [values],
+          err3 => {
+            if (err3)
+              return res.status(500).send({ msg: "Error guardando descriptores" });
+
+            res.send({ msg: "Persona registrada correctamente ✅" });
+          }
+        );
+      }
+    );
+  });
 });
 </script>
+
 </body>
 </html>
