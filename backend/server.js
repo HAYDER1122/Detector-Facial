@@ -1,4 +1,4 @@
-// server.js - PRO completo con sede
+// server.js - PRO completo con sede y búsqueda global
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2");
@@ -86,19 +86,16 @@ app.post("/login", (req, res) => {
   });
 });
 
-
+// ----------------- Registrar Persona -----------------
 app.post("/registrar-persona", verificarToken, (req, res) => {
-  if (req.user.role !== "admin")
-    return res.status(403).send({ msg: "No autorizado" });
+  if (req.user.role !== "admin") return res.status(403).send({ msg: "No autorizado" });
 
   const { nombre, sede, descriptors } = req.body;
-
   if (!nombre || !sede || !descriptors || !Array.isArray(descriptors))
     return res.status(400).send({ msg: "Datos incompletos" });
 
   const nuevoDescriptor = descriptors[0];
 
-  // 🔎 1. Traer todos los descriptores existentes
   db.query("SELECT descriptor FROM descriptores", (err, rows) => {
     if (err) return res.status(500).send({ msg: "Error BD" });
 
@@ -106,17 +103,11 @@ app.post("/registrar-persona", verificarToken, (req, res) => {
       try {
         const descriptorGuardado = JSON.parse(row.descriptor);
         const dist = euclideanDistance(descriptorGuardado, nuevoDescriptor);
-
-        // 🚨 Si ya existe un rostro parecido, bloquear
-        if (dist < 0.6) {
-          return res.status(400).send({
-            msg: "Este rostro ya está registrado en el sistema"
-          });
-        }
+        if (dist < 0.6) return res.status(400).send({ msg: "Rostro ya registrado" });
       } catch {}
     }
 
-    // ✅ 2. Si no existe, guardar persona
+    // Guardar persona
     db.query(
       "INSERT INTO personas (nombre, sede, activo) VALUES (?, ?, 1)",
       [nombre, sede],
@@ -126,123 +117,108 @@ app.post("/registrar-persona", verificarToken, (req, res) => {
         const personaId = result.insertId;
         const values = descriptors.map(d => [personaId, JSON.stringify(d)]);
 
-        db.query(
-          "INSERT INTO descriptores (persona_id, descriptor) VALUES ?",
-          [values],
-          err3 => {
-            if (err3)
-              return res.status(500).send({ msg: "Error guardando descriptores" });
-
-            res.send({ msg: "Persona registrada correctamente ✅" });
-          }
-        );
+        db.query("INSERT INTO descriptores (persona_id, descriptor) VALUES ?", [values], err3 => {
+          if (err3) return res.status(500).send({ msg: "Error guardando descriptores" });
+          res.send({ msg: "Persona registrada correctamente ✅" });
+        });
       }
     );
   });
 });
 
-
 // ----------------- Reconocer y registrar asistencia -----------------
 const FACE_THRESHOLD = 0.75;
-
 app.post("/reconocer", async (req, res) => {
   console.time("Reconocer");
   try {
     const { descriptor, tipo } = req.body;
     const tiposValidos = ["entrada", "salida", "descanso", "entrada_descanso"];
-
-    // Validación básica
     if (!descriptor || !Array.isArray(descriptor) || descriptor.length === 0)
       return res.status(400).send({ ok: false, mensaje: "Descriptor inválido" });
     if (!tipo || !tiposValidos.includes(tipo))
       return res.status(400).send({ ok: false, mensaje: "Tipo inválido" });
 
-    // ------------------- Traer descriptores activos -------------------
-    const sqlPersonas = `
-      SELECT p.id, p.nombre, d.descriptor
-      FROM personas p
-      JOIN descriptores d ON d.persona_id = p.id
-      WHERE p.activo = 1
-      LIMIT 100
-    `;
+    db.query(
+      `SELECT p.id, p.nombre, d.descriptor
+       FROM personas p
+       JOIN descriptores d ON d.persona_id = p.id
+       WHERE p.activo = 1
+       LIMIT 100`,
+      (err, filas) => {
+        if (err) return res.status(500).send({ ok: false, mensaje: "Error BD" });
 
-    db.query(sqlPersonas, (err, filas) => {
-      if (err) return res.status(500).send({ ok: false, mensaje: "Error BD" });
+        const personasValidas = filas
+          .map(f => {
+            try {
+              const desc = JSON.parse(f.descriptor);
+              if (Array.isArray(desc) && desc.length > 0) return { id: f.id, nombre: f.nombre, descriptor: desc };
+            } catch {}
+            return null;
+          })
+          .filter(Boolean);
 
-      const personasValidas = filas.map(f => {
-        try {
-          const desc = JSON.parse(f.descriptor);
-          if (Array.isArray(desc) && desc.length > 0)
-            return { id: f.id, nombre: f.nombre, descriptor: desc };
-        } catch {}
-        return null;
-      }).filter(Boolean);
+        if (!personasValidas.length) return res.status(400).send({ ok: false, mensaje: "No hay descriptores válidos" });
 
-      if (personasValidas.length === 0)
-        return res.status(400).send({ ok: false, mensaje: "No hay descriptores válidos" });
-
-      // ------------------- Buscar coincidencia -------------------
-      let personaCoincidente = null;
-      let minDist = 999;
-      for (const p of personasValidas) {
-        let dist = euclideanDistance(p.descriptor, descriptor);
-        if (dist < minDist) {
-          minDist = dist;
-          personaCoincidente = p;
+        // Buscar coincidencia
+        let personaCoincidente = null;
+        let minDist = 999;
+        for (const p of personasValidas) {
+          const dist = euclideanDistance(p.descriptor, descriptor);
+          if (dist < minDist) {
+            minDist = dist;
+            personaCoincidente = p;
+          }
         }
+
+        if (!personaCoincidente || minDist > FACE_THRESHOLD)
+          return res.send({ ok: false, mensaje: "Rostro no reconocido" });
+
+        db.query(
+          `SELECT tipo FROM registros WHERE persona_id=? AND DATE(fecha_hora)=CURDATE()`,
+          [personaCoincidente.id],
+          (err2, registros) => {
+            if (err2) return res.status(500).send({ ok: false, mensaje: "Error al consultar registros" });
+
+            const accionesHoy = registros.map(r => r.tipo);
+
+            // Validaciones de flujo
+            if (tipo === "entrada" && accionesHoy.includes("entrada"))
+              return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
+            if (tipo === "salida" && !accionesHoy.includes("entrada"))
+              return res.send({ ok: false, mensaje: "No puedes salir sin haber entrado" });
+            if (tipo === "salida" && accionesHoy.includes("salida"))
+              return res.send({ ok: false, mensaje: "Ya registraste salida hoy" });
+            if (tipo === "descanso" && !accionesHoy.includes("entrada"))
+              return res.send({ ok: false, mensaje: "No puedes tomar descanso sin entrar primero" });
+            if (tipo === "descanso" && accionesHoy.includes("descanso_salida"))
+              return res.send({ ok: false, mensaje: "Ya registraste descanso hoy" });
+            if (tipo === "entrada_descanso" && !accionesHoy.includes("descanso_salida"))
+              return res.send({ ok: false, mensaje: "No puedes entrar de descanso sin haber salido de descanso" });
+            if (tipo === "entrada_descanso" && accionesHoy.includes("descanso_entrada"))
+              return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
+
+            // Mapear tipo
+            const tipoDBMap = {
+              entrada: "entrada",
+              salida: "salida",
+              descanso: "descanso_salida",
+              entrada_descanso: "descanso_entrada"
+            };
+            const tipoDB = tipoDBMap[tipo];
+
+            db.query(
+              "INSERT INTO registros (persona_id, tipo, fecha_hora) VALUES (?, ?, NOW())",
+              [personaCoincidente.id, tipoDB],
+              err3 => {
+                console.timeEnd("Reconocer");
+                if (err3) return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
+                res.send({ ok: true, nombre: personaCoincidente.nombre, tipo, mensaje: `${personaCoincidente.nombre} - ${tipo} registrado ✅` });
+              }
+            );
+          }
+        );
       }
-
-      if (!personaCoincidente || minDist > FACE_THRESHOLD)
-        return res.send({ ok: false, mensaje: "Rostro no reconocido" });
-
-      // ------------------- Consultar registros de hoy -------------------
-      const sqlHoy = `SELECT tipo FROM registros WHERE persona_id=? AND DATE(fecha_hora)=CURDATE()`;
-      db.query(sqlHoy, [personaCoincidente.id], (err2, registros) => {
-        if (err2) return res.status(500).send({ ok: false, mensaje: "Error al consultar registros" });
-
-        const accionesHoy = registros.map(r => r.tipo);
-
-        // ------------------- Validaciones -------------------
-        if (tipo === "entrada" && accionesHoy.includes("entrada"))
-          return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
-        if (tipo === "salida" && !accionesHoy.includes("entrada"))
-          return res.send({ ok: false, mensaje: "No puedes salir sin haber entrado" });
-        if (tipo === "salida" && accionesHoy.includes("salida"))
-          return res.send({ ok: false, mensaje: "Ya registraste salida hoy" });
-        if (tipo === "descanso" && !accionesHoy.includes("entrada"))
-          return res.send({ ok: false, mensaje: "No puedes tomar descanso sin entrar primero" });
-        if (tipo === "descanso" && accionesHoy.includes("descanso_salida"))
-          return res.send({ ok: false, mensaje: "Ya registraste descanso hoy" });
-        if (tipo === "entrada_descanso" && !accionesHoy.includes("descanso_salida"))
-          return res.send({ ok: false, mensaje: "No puedes entrar de descanso sin haber salido de descanso" });
-        if (tipo === "entrada_descanso" && accionesHoy.includes("descanso_entrada"))
-          return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
-
-        // ------------------- Mapear tipo a ENUM MySQL -------------------
-        let tipoDB;
-        switch (tipo) {
-          case "entrada": tipoDB = "entrada"; break;
-          case "salida": tipoDB = "salida"; break;
-          case "descanso": tipoDB = "descanso_salida"; break;
-          case "entrada_descanso": tipoDB = "descanso_entrada"; break;
-          default: return res.status(400).send({ ok:false, mensaje:"Tipo inválido" });
-        }
-
-        // ------------------- Insertar registro -------------------
-        const insertSQL = "INSERT INTO registros (persona_id, tipo, fecha_hora) VALUES (?, ?, NOW())";
-        db.query(insertSQL, [personaCoincidente.id, tipoDB], err3 => {
-          console.timeEnd("Reconocer");
-          if (err3) return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
-
-          return res.send({
-            ok: true,
-            nombre: personaCoincidente.nombre,
-            tipo,
-            mensaje: `${personaCoincidente.nombre} - ${tipo} registrado ✅`
-          });
-        });
-      });
-    });
+    );
   } catch (e) {
     console.error("Error en /reconocer:", e);
     console.timeEnd("Reconocer");
@@ -250,25 +226,71 @@ app.post("/reconocer", async (req, res) => {
   }
 });
 
+// ----------------- Endpoint panel -----------------
+app.get("/personas", verificarToken, (req, res) => {
+  db.query("SELECT id, nombre, sede, activo FROM personas", (err, rows) => {
+    if (err) return res.status(500).send([]);
+    res.send(rows);
+  });
+});
 
-// ----------------- Exportar registros a Excel -----------------
+app.post("/personas/:id/toggle", verificarToken, (req, res) => {
+  const id = req.params.id;
+  db.query("UPDATE personas SET activo = NOT activo WHERE id=?", [id], err => {
+    if (err) return res.status(500).send({ ok: false, msg: "Error BD" });
+    res.send({ ok: true, msg: "Estado cambiado correctamente" });
+  });
+});
+
+// ----------------- Endpoint asistencias para panel -----------------
+app.get("/asistencias", verificarToken, (req, res) => {
+  const { fecha, nombre, sede, tipo } = req.query;
+
+  let sql = `
+    SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
+    FROM registros r
+    JOIN personas p ON r.persona_id = p.id
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (fecha) { sql += " AND DATE(r.fecha_hora) = ?"; params.push(fecha); }
+  if (nombre) { sql += " AND p.nombre LIKE ?"; params.push(`%${nombre}%`); }
+  if (sede) { sql += " AND p.sede LIKE ?"; params.push(`%${sede}%`); }
+  if (tipo) { sql += " AND r.tipo LIKE ?"; params.push(`%${tipo}%`); }
+
+  sql += " ORDER BY r.fecha_hora DESC";
+
+  db.query(sql, params, (err, rows) => {
+    if (err) return res.status(500).send([]);
+    res.send(rows);
+  });
+});
+
+// ----------------- Exportar registros a Excel (búsqueda global) -----------------
 app.get("/exportar-registros", verificarToken, async (req, res) => {
   try {
-    const { fecha, nombre, sede } = req.query;
+    const { fecha, busqueda } = req.query;
 
     let sql = `
       SELECT r.tipo, r.fecha_hora, p.nombre, p.sede
       FROM registros r
       JOIN personas p ON p.id = r.persona_id
+      WHERE 1=1
     `;
     const params = [];
-    const conditions = [];
 
-    if (fecha) { conditions.push("DATE(r.fecha_hora) = ?"); params.push(fecha); }
-    if (nombre) { conditions.push("p.nombre LIKE ?"); params.push(`%${nombre}%`); }
-    if (sede) { conditions.push("p.sede LIKE ?"); params.push(`%${sede}%`); }
+    if (fecha) { sql += " AND DATE(r.fecha_hora) = ?"; params.push(fecha); }
+    if (busqueda) {
+      sql += ` AND (
+        p.nombre LIKE ? OR
+        p.sede LIKE ? OR
+        r.tipo LIKE ?
+      )`;
+      const like = `%${busqueda}%`;
+      params.push(like, like, like);
+    }
 
-    if (conditions.length > 0) sql += " WHERE " + conditions.join(" AND ");
     sql += " ORDER BY r.fecha_hora DESC";
 
     db.query(sql, params, async (err, rows) => {
@@ -299,14 +321,8 @@ app.get("/exportar-registros", verificarToken, async (req, res) => {
         cell.alignment = { vertical: "middle", horizontal: "center" };
       });
 
-      res.setHeader(
-        "Content-Type",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      );
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename=registros.xlsx`
-      );
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename=registros.xlsx`);
 
       await workbook.xlsx.write(res);
       res.end();
@@ -318,53 +334,11 @@ app.get("/exportar-registros", verificarToken, async (req, res) => {
   }
 });
 
-// ----------------- Endpoint panel -----------------
-app.get("/personas", verificarToken, (req, res) => {
-  db.query("SELECT id, nombre, sede, activo FROM personas", (err, rows) => {
-    if (err) return res.status(500).send([]);
-    res.send(rows);
-  });
-});
-
-app.post("/personas/:id/toggle", verificarToken, (req,res)=>{
-  const id = req.params.id;
-  db.query("UPDATE personas SET activo = NOT activo WHERE id=?", [id], (err)=>{
-    if(err) return res.status(500).send({ ok:false, msg:"Error BD" });
-    res.send({ ok:true, msg:"Estado cambiado correctamente" });
-  });
-});
-
 // ----------------- Servir login -----------------
-app.get("/", (req,res)=>{
-  res.sendFile(path.join(__dirname,"public/login.html"));
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/login.html"));
 });
 
-const { fecha, busqueda } = req.query;
-
-let sql = `
-  SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
-  FROM registros r
-  JOIN personas p ON r.persona_id = p.id
-  WHERE 1=1
-`;
-const params = [];
-
-if(fecha){ 
-  sql += " AND DATE(r.fecha_hora) = ?"; 
-  params.push(fecha); 
-}
-
-if(busqueda){ 
-  sql += ` AND (
-    p.nombre LIKE ? OR 
-    p.sede LIKE ? OR 
-    r.tipo LIKE ?
-  )`;
-  const like = `%${busqueda}%`;
-  params.push(like, like, like);
-}
-
-sql += " ORDER BY r.fecha_hora DESC";
 // ----------------- Iniciar servidor -----------------
 const PORT = process.env.PORT || 3000;
-app.listen(PORT,'0.0.0.0',()=>console.log("Servidor activo en puerto " + PORT));
+app.listen(PORT, "0.0.0.0", () => console.log("Servidor activo en puerto " + PORT));
