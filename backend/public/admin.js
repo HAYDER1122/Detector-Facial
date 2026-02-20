@@ -1,167 +1,150 @@
-// =====================
-// admin.js
-// =====================
+// admin.js - Panel administrativo optimizado
+document.addEventListener("DOMContentLoaded", () => {
 
-// Obtener referencias
-const token = localStorage.getItem("token");
-if(!token){ window.location.href="login.html"; }
+  const token = localStorage.getItem("token");
+  if(!token){ window.location.href = "login.html"; return; }
 
-const registrosBody = document.getElementById("registrosBody");
-const personasBody = document.getElementById("personasBody");
-const fechaFiltro = document.getElementById("fechaFiltro");
-const busquedaGeneral = document.getElementById("busquedaGeneral");
-const exportBtn = document.getElementById("exportExcel");
-const logoutBtn = document.getElementById("logoutBtn");
+  const registrosBody = document.getElementById("registrosBody");
+  const personasBody = document.getElementById("personasBody");
+  const fechaFiltro = document.getElementById("fechaFiltro");
+  const busquedaGeneral = document.getElementById("busquedaGeneral");
+  const exportBtn = document.getElementById("exportExcel");
+  let chart;
 
-let chart;
+  // ---------------- LOGOUT ----------------
+  document.getElementById("logoutBtn").addEventListener("click", () => {
+    localStorage.removeItem("token");
+    window.location.href="login.html";
+  });
 
-// ---------------- LOGOUT ----------------
-logoutBtn.addEventListener("click", e => {
-  e.preventDefault();
-  localStorage.removeItem("token");
-  window.location.href="login.html";
-});
-
-// ---------------- CARGAR PERSONAS ----------------
-async function cargarPersonas() {
-  try {
-    const res = await fetch("/personas", { headers: { "Authorization": `Bearer ${token}` } });
-    const personas = await res.json();
-    personasBody.innerHTML = "";
-
-    personas.forEach(p => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${p.nombre}</td>
-        <td>${p.sede}</td>
-        <td>${p.activo ? "Sí" : "No"}</td>
-        <td><button class="btn btn-sm btn-primary toggleBtn">Toggle</button></td>
-      `;
-      tr.querySelector(".toggleBtn").addEventListener("click", async () => {
-        await fetch(`/personas/${p.id}/toggle`, { method:"POST", headers:{ "Authorization": `Bearer ${token}` } });
-        cargarPersonas();
+  // ---------------- CARGAR PERSONAS ----------------
+  async function cargarPersonas() {
+    try {
+      const res = await fetch("/personas", { headers:{ "Authorization": `Bearer ${token}` } });
+      const personas = await res.json();
+      personasBody.innerHTML = "";
+      personas.forEach(p => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${p.nombre}</td>
+          <td>${p.sede}</td>
+          <td>${p.activo ? "Sí" : "No"}</td>
+          <td><button class="btn btn-sm btn-primary toggleBtn">Toggle</button></td>
+        `;
+        tr.querySelector(".toggleBtn").addEventListener("click", async () => {
+          await fetch(`/personas/${p.id}/toggle`, {
+            method:"POST",
+            headers:{ "Authorization": `Bearer ${token}` }
+          });
+          cargarPersonas();
+        });
+        personasBody.appendChild(tr);
       });
-      personasBody.appendChild(tr);
-    });
-  } catch(e) {
-    console.error("Error cargando personas:", e);
+    } catch(e){ console.error("Error cargando personas:", e); }
   }
-}
 
-// ---------------- CARGAR REGISTROS ----------------
-async function cargarRegistros() {
-  try {
+  // ---------------- CARGAR REGISTROS ----------------
+  async function cargarRegistros() {
+    try {
+      const fecha = fechaFiltro.value;
+      const busqueda = busquedaGeneral.value.trim().toLowerCase();
+      const params = new URLSearchParams();
+      if(fecha) params.append("fecha", fecha);
+
+      const res = await fetch("/asistencias?" + params.toString(), {
+        headers:{ "Authorization": `Bearer ${token}` }
+      });
+      let registros = await res.json();
+
+      // Filtro unificado: nombre, sede o tipo
+      if(busqueda){
+        registros = registros.filter(r =>
+          r.nombre.toLowerCase().includes(busqueda) ||
+          r.sede.toLowerCase().includes(busqueda) ||
+          r.tipo.toLowerCase().includes(busqueda)
+        );
+      }
+
+      // Render tabla
+      registrosBody.innerHTML = "";
+      registros.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.className = r.tipo;
+        tr.innerHTML = `
+          <td>${r.nombre}</td>
+          <td>${r.sede}</td>
+          <td>${r.tipo}</td>
+          <td>${new Date(r.fecha).toLocaleString()}</td>
+        `;
+        registrosBody.appendChild(tr);
+      });
+
+      // Actualizar gráfico
+      actualizarGrafico(registros);
+
+    } catch(e){ console.error("Error cargando registros:", e); }
+  }
+
+  // ---------------- ACTUALIZAR GRÁFICO ----------------
+  function actualizarGrafico(data){
+    const ctx = document.getElementById("graficoAsistencias").getContext("2d");
+    const tipos = ["entrada","salida","descanso_salida","descanso_entrada"];
+    const counts = tipos.map(t => data.filter(r => r.tipo===t).length);
+
+    if(chart) chart.destroy(); // Evitar error "canvas already in use"
+    chart = new Chart(ctx, {
+      type:"bar",
+      data:{
+        labels:["Entrada","Salida","Descanso Salida","Descanso Entrada"],
+        datasets:[{
+          label:"Cantidad",
+          data:counts,
+          backgroundColor:["#0d6efd","#dc3545","#ffc107","#198754"]
+        }]
+      },
+      options:{ responsive:true, plugins:{ legend:{ display:false } } }
+    });
+  }
+
+  // ---------------- EXPORTAR EXCEL ----------------
+  exportBtn.addEventListener("click", async () => {
     const fecha = fechaFiltro.value;
     const busqueda = busquedaGeneral.value.trim().toLowerCase();
     const params = new URLSearchParams();
     if(fecha) params.append("fecha", fecha);
-
-    // Enviar solo nombre y sede al backend
-    if(busqueda){
+    if(busqueda){ 
       params.append("nombre", busqueda);
       params.append("sede", busqueda);
+      params.append("tipo", busqueda);
     }
 
-    const res = await fetch("/asistencias?" + params.toString(), {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    let registros = await res.json();
-
-    // Filtro unificado en frontend
-    if(busqueda){
-      registros = registros.filter(r => 
-        r.nombre.toLowerCase().includes(busqueda) ||
-        r.sede.toLowerCase().includes(busqueda) ||
-        r.tipo.toLowerCase().includes(busqueda)
-      );
-    }
-
-    // Render tabla
-    registrosBody.innerHTML = "";
-    registros.forEach(r => {
-      const tr = document.createElement("tr");
-      tr.className = r.tipo;
-      tr.innerHTML = `
-        <td>${r.nombre}</td>
-        <td>${r.sede}</td>
-        <td>${r.tipo}</td>
-        <td>${new Date(r.fecha).toLocaleString()}</td>
-      `;
-      registrosBody.appendChild(tr);
+    const res = await fetch("/exportar-registros?" + params.toString(), {
+      headers:{ "Authorization": `Bearer ${token}` }
     });
 
-    // Render gráfico
-    actualizarGrafico(registros);
-
-  } catch(e){
-    console.error("Error cargando registros:", e);
-  }
-}
-
-// ---------------- ACTUALIZAR GRÁFICO ----------------
-function actualizarGrafico(data){
-  const ctx = document.getElementById("graficoAsistencias").getContext("2d");
-  const tipos = ["entrada","salida","descanso_salida","descanso_entrada"];
-  const counts = tipos.map(t => data.filter(r => r.tipo === t).length);
-
-  // Destruir chart previo si existe
-  if(chart) chart.destroy();
-
-  chart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: ["Entrada","Salida","Descanso Salida","Descanso Entrada"],
-      datasets: [{
-        label: "Cantidad",
-        data: counts,
-        backgroundColor: ["#0d6efd","#dc3545","#ffc107","#198754"]
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } }
+    if(!res.ok){
+      const data = await res.json();
+      alert(data.msg || "Error al exportar");
+      return;
     }
-  });
-}
 
-// ---------------- EXPORTAR EXCEL ----------------
-exportBtn.addEventListener("click", async () => {
-  const fecha = fechaFiltro.value;
-  const busqueda = busquedaGeneral.value.trim();
-  const params = new URLSearchParams();
-  if(fecha) params.append("fecha", fecha);
-  if(busqueda){
-    params.append("nombre", busqueda);
-    params.append("sede", busqueda);
-  }
-
-  const res = await fetch("/exportar-registros?" + params.toString(), {
-    headers: { "Authorization": `Bearer ${token}` }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "registros.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
   });
 
-  if(!res.ok){
-    const data = await res.json();
-    alert(data.msg || "Error al exportar");
-    return;
-  }
+  // ---------------- EVENTOS FILTROS ----------------
+  fechaFiltro.addEventListener("input", cargarRegistros);
+  busquedaGeneral.addEventListener("input", cargarRegistros);
 
-  const blob = await res.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "registros.xlsx";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.URL.revokeObjectURL(url);
-});
-
-// ---------------- EVENTOS INPUTS ----------------
-fechaFiltro.addEventListener("input", cargarRegistros);
-busquedaGeneral.addEventListener("input", cargarRegistros);
-
-// ---------------- INICIALIZAR ----------------
-window.addEventListener("load", () => {
+  // ---------------- INICIALIZAR ----------------
   cargarPersonas();
   cargarRegistros();
+
 });
