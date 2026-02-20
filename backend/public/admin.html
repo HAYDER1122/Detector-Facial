@@ -132,37 +132,50 @@ async function cargarPersonas() {
 // Función para cargar registros y filtrar por búsqueda unificada
 async function cargarRegistros() {
   try {
-    const fecha = document.getElementById("fechaFiltro").value;
-    const busqueda = document.getElementById("busquedaGeneral").value.trim();
+    const fecha = fechaFiltro.value;
+    const busqueda = busquedaGeneral.value.trim().toLowerCase();
     const params = new URLSearchParams();
     if(fecha) params.append("fecha", fecha);
+
+    // Solo enviar nombre y sede al backend
     if(busqueda) {
       params.append("nombre", busqueda);
       params.append("sede", busqueda);
-      params.append("tipo", busqueda.toLowerCase());
     }
 
-    const res = await fetch("/asistencias?" + params.toString(), { headers: { "Authorization": `Bearer ${token}` } });
-    const registros = await res.json();
+    const res = await fetch("/asistencias?" + params.toString(), { 
+      headers:{ "Authorization": `Bearer ${token}` } 
+    });
+    let registros = await res.json();
 
-    const tbody = document.getElementById("registrosBody");
-    tbody.innerHTML = "";
+    // FILTRO UNIFICADO en frontend
+    if(busqueda) {
+      registros = registros.filter(r => 
+        r.nombre.toLowerCase().includes(busqueda) ||
+        r.sede.toLowerCase().includes(busqueda) ||
+        r.tipo.toLowerCase().includes(busqueda)
+      );
+    }
+
+    // Render tabla
+    registrosBody.innerHTML = "";
     registros.forEach(r => {
       const tr = document.createElement("tr");
-      tr.className = r.tipo; // colorear fila por tipo
+      tr.className = r.tipo;
       tr.innerHTML = `
         <td>${r.nombre}</td>
         <td>${r.sede}</td>
         <td>${r.tipo}</td>
         <td>${new Date(r.fecha).toLocaleString()}</td>
       `;
-      tbody.appendChild(tr);
+      registrosBody.appendChild(tr);
     });
 
+    // Render gráfico
     actualizarGrafico(registros);
+
   } catch(e){ console.error("Error cargando registros:", e); }
 }
-
 // Función para actualizar gráfico
 function actualizarGrafico(data){
   const ctx = document.getElementById("graficoAsistencias");
