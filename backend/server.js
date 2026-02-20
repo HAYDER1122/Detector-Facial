@@ -244,7 +244,7 @@ app.post("/personas/:id/toggle", verificarToken, (req, res) => {
 
 // ----------------- Endpoint asistencias para panel -----------------
 app.get("/asistencias", verificarToken, (req, res) => {
-  const { fecha, nombre, sede, tipo } = req.query;
+  const { fecha, busqueda } = req.query;
 
   let sql = `
     SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
@@ -254,10 +254,22 @@ app.get("/asistencias", verificarToken, (req, res) => {
   `;
   const params = [];
 
-  if (fecha) { sql += " AND DATE(r.fecha_hora) = ?"; params.push(fecha); }
-  if (nombre) { sql += " AND p.nombre LIKE ?"; params.push(`%${nombre}%`); }
-  if (sede) { sql += " AND p.sede LIKE ?"; params.push(`%${sede}%`); }
-  if (tipo) { sql += " AND r.tipo LIKE ?"; params.push(`%${tipo}%`); }
+  // Filtrar por fecha
+  if (fecha) {
+    sql += " AND DATE(r.fecha_hora) = ?";
+    params.push(fecha);
+  }
+
+  // Búsqueda global case-insensitive
+  if (busqueda) {
+    sql += ` AND (
+      LOWER(p.nombre) LIKE ? OR
+      LOWER(p.sede) LIKE ? OR
+      LOWER(r.tipo) LIKE ?
+    )`;
+    const like = `%${busqueda.toLowerCase()}%`;
+    params.push(like, like, like);
+  }
 
   sql += " ORDER BY r.fecha_hora DESC";
 
@@ -266,7 +278,6 @@ app.get("/asistencias", verificarToken, (req, res) => {
     res.send(rows);
   });
 });
-
 // ----------------- Exportar registros a Excel (búsqueda global) -----------------
 app.get("/exportar-registros", verificarToken, async (req, res) => {
   try {
@@ -280,14 +291,20 @@ app.get("/exportar-registros", verificarToken, async (req, res) => {
     `;
     const params = [];
 
-    if (fecha) { sql += " AND DATE(r.fecha_hora) = ?"; params.push(fecha); }
+    // Filtrar por fecha
+    if (fecha) {
+      sql += " AND DATE(r.fecha_hora) = ?";
+      params.push(fecha);
+    }
+
+    // Búsqueda global case-insensitive
     if (busqueda) {
       sql += ` AND (
-        p.nombre LIKE ? OR
-        p.sede LIKE ? OR
-        r.tipo LIKE ?
+        LOWER(p.nombre) LIKE ? OR
+        LOWER(p.sede) LIKE ? OR
+        LOWER(r.tipo) LIKE ?
       )`;
-      const like = `%${busqueda}%`;
+      const like = `%${busqueda.toLowerCase()}%`;
       params.push(like, like, like);
     }
 

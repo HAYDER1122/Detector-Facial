@@ -86,6 +86,8 @@ if (!localStorage.getItem("token")) window.location.href = "login.html";
 
 <script>
 const token = localStorage.getItem("token");
+if(!token) window.location.href = "login.html";
+
 const fechaFiltro = document.getElementById("fechaFiltro");
 const busquedaGeneral = document.getElementById("busquedaGeneral");
 const registrosBody = document.getElementById("registrosBody");
@@ -142,29 +144,35 @@ async function cargarRegistros() {
     const busqueda = busquedaGeneral.value.trim().toLowerCase();
     const params = new URLSearchParams();
     if(fecha) params.append("fecha", fecha);
-    if(busqueda){
-      params.append("nombre", busqueda);
-      params.append("sede", busqueda);
-      params.append("tipo", busqueda); // 🔹 importante para filtrar tipo en backend
-    }
+    if(busqueda) params.append("busqueda", busqueda); // ← filtro global único
 
     const res = await fetch("/asistencias?" + params.toString(), {
       headers:{ "Authorization": `Bearer ${token}` }
     });
-    const registros = await res.json();
 
+    if(!res.ok){
+      registrosBody.innerHTML = `<tr><td colspan="4">Error cargando registros</td></tr>`;
+      return;
+    }
+
+    const registros = await res.json();
     registrosBody.innerHTML = "";
-    registros.forEach(r => {
-      const tr = document.createElement("tr");
-      tr.className = r.tipo;
-      tr.innerHTML = `
-        <td>${r.nombre}</td>
-        <td>${r.sede}</td>
-        <td>${r.tipo}</td>
-        <td>${new Date(r.fecha).toLocaleString()}</td>
-      `;
-      registrosBody.appendChild(tr);
-    });
+
+    if(registros.length === 0){
+      registrosBody.innerHTML = `<tr><td colspan="4">No hay registros que coincidan con los filtros.</td></tr>`;
+    } else {
+      registros.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.className = r.tipo;
+        tr.innerHTML = `
+          <td>${r.nombre}</td>
+          <td>${r.sede}</td>
+          <td>${r.tipo}</td>
+          <td>${new Date(r.fecha).toLocaleString()}</td>
+        `;
+        registrosBody.appendChild(tr);
+      });
+    }
 
     actualizarGrafico(registros);
 
@@ -198,11 +206,7 @@ exportBtn.addEventListener("click", async () => {
   const busqueda = busquedaGeneral.value.trim().toLowerCase();
   const params = new URLSearchParams();
   if(fecha) params.append("fecha", fecha);
-  if(busqueda){
-    params.append("nombre", busqueda);
-    params.append("sede", busqueda);
-    params.append("tipo", busqueda);
-  }
+  if(busqueda) params.append("busqueda", busqueda); // ← único filtro global
 
   const res = await fetch("/exportar-registros?" + params.toString(), {
     headers:{ "Authorization": `Bearer ${token}` }
