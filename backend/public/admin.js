@@ -43,28 +43,33 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch(e){ console.error("Error cargando personas:", e); }
   }
 
-  // ---------------- CARGAR REGISTROS ----------------
   async function cargarRegistros() {
-    try {
-      const fecha = fechaFiltro.value;
-      const busqueda = busquedaGeneral.value.trim().toLowerCase();
-      const params = new URLSearchParams();
-      if(fecha) params.append("fecha", fecha);
-      if(busqueda){
-        // Enviamos los tres filtros al backend
-        params.append("nombre", busqueda);
-        params.append("sede", busqueda);
-        params.append("tipo", busqueda);
-      }
+  try {
+    const fecha = fechaFiltro.value;
+    const busqueda = busquedaGeneral.value.trim().toLowerCase();
+    const params = new URLSearchParams();
 
-      const res = await fetch("/asistencias?" + params.toString(), {
-        headers:{ "Authorization": `Bearer ${token}` }
-      });
+    if (fecha) params.append("fecha", fecha);
 
-      const registros = await res.json();
+    // Si hay búsqueda, enviamos como un solo parámetro 'busqueda' al backend
+    if (busqueda) params.append("busqueda", busqueda);
 
-      // Render tabla
-      registrosBody.innerHTML = "";
+    const res = await fetch("/asistencias?" + params.toString(), {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    if (!res.ok) {
+      console.error("Error al cargar registros:", res.statusText);
+      registrosBody.innerHTML = `<tr><td colspan="4">No se pudieron cargar los registros.</td></tr>`;
+      return;
+    }
+
+    const registros = await res.json();
+    registrosBody.innerHTML = "";
+
+    if (registros.length === 0) {
+      registrosBody.innerHTML = `<tr><td colspan="4">No hay registros que coincidan con los filtros.</td></tr>`;
+    } else {
       registros.forEach(r => {
         const tr = document.createElement("tr");
         tr.className = r.tipo;
@@ -76,12 +81,16 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
         registrosBody.appendChild(tr);
       });
+    }
 
-      // Actualizar gráfico
-      actualizarGrafico(registros);
+    // Actualizamos gráfico
+    actualizarGrafico(registros);
 
-    } catch(e){ console.error("Error cargando registros:", e); }
+  } catch (e) {
+    console.error("Error cargando registros:", e);
+    registrosBody.innerHTML = `<tr><td colspan="4">Ocurrió un error al cargar los registros.</td></tr>`;
   }
+}
 
   // ---------------- ACTUALIZAR GRÁFICO ----------------
   function actualizarGrafico(data){
