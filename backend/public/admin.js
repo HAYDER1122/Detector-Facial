@@ -8,48 +8,52 @@ const exportBtn = document.getElementById("exportExcel");
 let grafico;
 
 // =====================
-// CARGAR ASISTENCIAS
+// CARGAR ASISTENCIAS CON FILTROS
 // =====================
 async function cargarAsistencias() {
-  const fecha = fechaFiltro.value;
-  const nombre = busquedaNombre.value.trim();
-  const sede = busquedaSede.value.trim();
+  try {
+    const fecha = fechaFiltro.value;
+    const nombre = busquedaNombre.value.trim();
+    const sede = busquedaSede.value.trim();
 
-  let url = "/asistencias?";
-  const params = [];
+    let url = "/asistencias?";
+    const params = [];
 
-  if (fecha) params.push("fecha=" + fecha);
-  if (nombre) params.push("nombre=" + encodeURIComponent(nombre));
-  if (sede) params.push("sede=" + encodeURIComponent(sede));
+    if (fecha) params.push("fecha=" + fecha);
+    if (nombre) params.push("nombre=" + encodeURIComponent(nombre));
+    if (sede) params.push("sede=" + encodeURIComponent(sede));
 
-  url += params.join("&");
+    url += params.join("&");
 
-  const res = await fetch(url, {
-    headers: {
-      "Authorization": "Bearer " + token
-    }
-  });
+    const res = await fetch(url, {
+      headers: { "Authorization": "Bearer " + token }
+    });
 
-  const data = await res.json();
-  renderTabla(data);
-  renderGrafico(data);
+    if (!res.ok) throw new Error("Error al cargar registros");
+
+    const data = await res.json();
+    renderTabla(data);
+    renderGrafico(data);
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 // =====================
-// RENDER TABLA
+// RENDER TABLA CON COLORES
 // =====================
 function renderTabla(data) {
   registrosBody.innerHTML = "";
-
   data.forEach(r => {
-    registrosBody.innerHTML += `
-      <tr>
-        <td>${r.nombre}</td>
-        <td>${r.sede}</td>
-        <td>${r.tipo}</td>
-        <td>${new Date(r.fecha).toLocaleString()}</td>
-      </tr>
+    const tr = document.createElement("tr");
+    tr.className = r.tipo; // usar clase para colorear
+    tr.innerHTML = `
+      <td>${r.nombre}</td>
+      <td>${r.sede}</td>
+      <td>${r.tipo}</td>
+      <td>${new Date(r.fecha).toLocaleString()}</td>
     `;
+    registrosBody.appendChild(tr);
   });
 }
 
@@ -65,13 +69,10 @@ function renderGrafico(data) {
   };
 
   data.forEach(r => {
-    if (conteo[r.tipo] !== undefined) {
-      conteo[r.tipo]++;
-    }
+    if (conteo[r.tipo] !== undefined) conteo[r.tipo]++;
   });
 
   const ctx = document.getElementById("graficoAsistencias").getContext("2d");
-
   if (grafico) grafico.destroy();
 
   grafico = new Chart(ctx, {
@@ -87,24 +88,16 @@ function renderGrafico(data) {
           conteo.descanso_entrada
         ],
         backgroundColor: [
-          "#00ffcc",
-          "#ff6384",
-          "#ffcd56",
-          "#36a2eb"
+          "#0d6efd", "#dc3545", "#ffc107", "#198754"
         ]
       }]
     },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false }
-      }
-    }
+    options: { responsive: true, plugins: { legend: { display: false } } }
   });
 }
 
 // =====================
-// EXPORTAR EXCEL
+// EXPORTAR EXCEL CON FILTROS
 // =====================
 exportBtn.addEventListener("click", () => {
   const fecha = fechaFiltro.value;
@@ -119,7 +112,6 @@ exportBtn.addEventListener("click", () => {
   if (sede) params.push("sede=" + encodeURIComponent(sede));
 
   url += params.join("&");
-
   window.open(url, "_blank");
 });
 
@@ -133,4 +125,4 @@ busquedaSede.addEventListener("input", cargarAsistencias);
 // =====================
 // INICIALIZAR
 // =====================
-cargarAsistencias();
+window.addEventListener("load", cargarAsistencias);
