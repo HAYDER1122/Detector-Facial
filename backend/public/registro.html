@@ -26,6 +26,57 @@ video { border-radius:10px; border:2px solid #00ffcc; }
   .nav-links.show{ display:flex; }
   .hamburger{ display:flex; }
 }
+/* ---------------- FOOTER SAAS --------------- */
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#panel {
+    flex: 1;
+}
+
+.footer-custom {
+    background: #111827;
+    padding: 25px 0;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    margin-top: auto;
+}
+
+.footer-content {
+    text-align: center;
+    font-size: 0.9em;
+    color: #aaa;
+}
+
+.powered {
+    margin-right: 6px;
+}
+
+.brand-footer {
+    color: #00ffcc;
+    font-weight: bold;
+    letter-spacing: 2px;
+    animation: glowFooter 2s ease-in-out infinite alternate;
+}
+
+.year {
+    margin-top: 8px;
+    font-size: 0.8em;
+    color: #666;
+}
+
+/* Glow elegante y sutil */
+@keyframes glowFooter {
+    from {
+        text-shadow: 0 0 5px #00ffcc;
+    }
+    to {
+        text-shadow: 0 0 15px #00ffcc;
+    }
+}
 </style>
 </head>
 <body>
@@ -192,6 +243,18 @@ btnRegistrar.addEventListener("click", async () => {
 });
 </script>
 
+<footer class="footer-custom">
+  <div class="footer-content">
+    <span class="powered">Powered by</span>
+    <span class="brand-footer">HOPD</span>
+    <div class="year">© <span id="year"></span> Control Biométrico</div>
+  </div>
+</footer>
+
+<script>
+  // Año automático
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
 
 </body>
 </html>
