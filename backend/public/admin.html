@@ -2,32 +2,139 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Panel Administrativo Avanzado</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-body { background-color: #0b0f17; color: white; }
-.navbar-custom { background-color: #111827; }
-.navbar-custom .navbar-brand { color: #00ffcc; font-weight: bold; }
-.navbar-custom .nav-link { color: white; }
-.navbar-custom .nav-link:hover { color: #00ffcc; }
-.table-dark th, .table-dark td { vertical-align: middle; }
-.entrada { background-color: rgba(13,110,253,0.2); }
-.salida { background-color: rgba(220,53,69,0.2); }
-.descanso_salida { background-color: rgba(255,193,7,0.2); }
-.descanso_entrada { background-color: rgba(25,135,84,0.2); }
-/* ---------------- FOOTER SAAS --------------- */
+<title>Control Biométrico Facial</title>
+<link rel="icon" href="data:,">
 
+<style>
 body {
+    background:#0b0f17;
+    color:white;
+    font-family:Arial, sans-serif;
+    text-align:center;
+    margin:0;
+    padding:0;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
 
-#panel {
-    flex: 1;
+h1{
+    margin-top:20px;
+    color:#00ffcc;
 }
 
+#panel {
+    background:#111827;
+    width:90%;
+    max-width:800px;
+    margin:20px auto;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.5);
+    flex:1;
+}
+
+video {
+    border-radius:10px;
+    border:2px solid #00ffcc;
+    max-width:100%;
+    display:block;
+    margin:0 auto;
+}
+
+canvas {
+    position:absolute;
+    top:0;
+    left:0;
+}
+
+select {
+    padding:12px;
+    margin:15px 0;
+    border-radius:8px;
+    border:none;
+    font-size:14px;
+}
+
+/* Estados */
+.estado-ok{color:#00ffcc;}
+.estado-error{color:red;}
+.estado-esperando{color:#aaa;}
+
+/* ---------------- NAVBAR ---------------- */
+.navbar {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:#111827;
+    padding:15px 25px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.5);
+}
+
+.navbar .brand{
+    font-size:1.4em;
+    font-weight:bold;
+    color:#00ffcc;
+}
+
+.navbar .nav-links{
+    list-style:none;
+    display:flex;
+    gap:25px;
+    margin:0;
+    padding:0;
+}
+
+.navbar .nav-links li a{
+    color:white;
+    text-decoration:none;
+    font-weight:bold;
+    transition:0.3s;
+}
+
+.navbar .nav-links li a:hover{
+    color:#00ffcc;
+}
+
+/* Hamburguesa */
+.hamburger{
+    display:none;
+    flex-direction:column;
+    cursor:pointer;
+    gap:5px;
+}
+
+.hamburger div{
+    width:25px;
+    height:3px;
+    background:white;
+    border-radius:2px;
+}
+
+/* Responsive */
+@media (max-width:768px){
+    .nav-links{
+    display:none;
+    flex-direction:column;
+    position:absolute;
+    top:65px;
+    right:20px;
+    background:#111827;
+    padding:15px;
+    border-radius:8px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.6);
+}
+
+.nav-links.show{
+    display:flex;
+}
+
+.hamburger{
+    display:flex;
+}
+}
+
+/* ---------------- FOOTER ---------------- */
 .footer-custom {
     background: #111827;
     padding: 25px 0;
@@ -58,238 +165,236 @@ body {
     color: #666;
 }
 
-/* Glow elegante y sutil */
+/* Glow elegante */
 @keyframes glowFooter {
-    from {
-        text-shadow: 0 0 5px #00ffcc;
-    }
-    to {
-        text-shadow: 0 0 15px #00ffcc;
-    }
+    from { text-shadow: 0 0 5px #00ffcc; }
+    to   { text-shadow: 0 0 15px #00ffcc; }
 }
 </style>
-<script>
-// 🔐 Redirigir si no hay token
-if (!localStorage.getItem("token")) window.location.href = "login.html";
-</script>
 </head>
+
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-custom mb-4">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="index.html">Control Biométrico</a>
-    <button class="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a class="nav-link" href="index.html">Inicio</a></li>
-        <li class="nav-item"><a class="nav-link" href="registro.html">Registrar Usuario</a></li>
-        <li class="nav-item"><a class="nav-link text-danger" href="#" id="logoutBtn">Cerrar sesión</a></li>
-      </ul>
+<h1>CONTROL BIOMÉTRICO</h1>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <div class="brand">Control Biométrico</div>
+
+    <div class="hamburger" id="hamburger">
+        <div></div>
+        <div></div>
+        <div></div>
     </div>
-  </div>
+
+    <ul class="nav-links" id="navLinks">
+        <li id="linkLogin"><a href="login.html">Login</a></li>
+        <li id="linkPanel" style="display:none;"><a href="admin.html">Panel</a></li>
+        <li id="linkRegistro" style="display:none;"><a href="registro.html">Registro</a></li>
+        <li id="linkLogout" style="display:none;"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
+    </ul>
 </nav>
 
-<div class="container">
-<h2 class="mb-4">Panel Administrativo Avanzado</h2>
+<div id="panel">
+<select id="tipoRegistro">
+    <option value="">Seleccionar acción...</option>
+    <option value="entrada">Entrada</option>
+    <option value="salida">Salida</option>
+    <option value="descanso">Salida descanso</option>
+    <option value="entrada_descanso">Entrada descanso</option>
+</select>
 
-<button id="exportExcel" class="btn btn-success mb-3">Exportar Registros a Excel</button>
-
-<div class="mb-3">
-  <input type="date" id="fechaFiltro" class="form-control mb-2" />
-  <input type="text" id="busquedaGeneral" placeholder="Buscar por nombre o sede" class="form-control" />
+<div style="position:relative; display:inline-block;">
+    <video id="video" width="720" height="560" autoplay muted playsinline></video>
+    <canvas id="canvas" width="720" height="560"></canvas>
 </div>
 
-<h4>Registros de Asistencia</h4>
-<div class="table-responsive">
-<table class="table table-striped table-dark">
-  <thead>
-    <tr>
-      <th>Nombre</th>
-      <th>Sede</th>
-      <th>Tipo</th>
-      <th>Fecha</th>
-    </tr>
-  </thead>
-  <tbody id="registrosBody"></tbody>
-</table>
+<div id="overlayMensaje" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.85);
+    color:#00ffcc;
+    font-size:3em;
+    font-weight:bold;
+    text-align:center;
+    line-height:100vh;
+    z-index:9999;
+">MENSAJE</div>
+
+<h2 id="resultado" class="estado-esperando">Cargando...</h2>
 </div>
 
-<h4 class="mt-5">Gráfico Entradas/Salidas</h4>
-<canvas id="graficoAsistencias" height="100"></canvas>
-
-<h4 class="mt-5">Personas Registradas</h4>
-<div class="table-responsive">
-<table class="table table-bordered table-dark">
-  <thead>
-    <tr>
-      <th>Nombre</th>
-      <th>Sede</th>
-      <th>Activo</th>
-      <th>Acción</th>
-    </tr>
-  </thead>
-  <tbody id="personasBody"></tbody>
-</table>
-</div>
-</div>
+<script src="/js/face-api.min.js"></script>
 
 <script>
-const token = localStorage.getItem("token");
-if(!token) window.location.href = "login.html";
+document.addEventListener("DOMContentLoaded", async () => {
+    // NAVBAR
+    const token = localStorage.getItem("token");
+    const linkLogin = document.getElementById("linkLogin");
+    const linkPanel = document.getElementById("linkPanel");
+    const linkRegistro = document.getElementById("linkRegistro");
+    const linkLogout = document.getElementById("linkLogout");
+    const logoutBtn = document.getElementById("logoutBtn");
 
-const fechaFiltro = document.getElementById("fechaFiltro");
-const busquedaGeneral = document.getElementById("busquedaGeneral");
-const registrosBody = document.getElementById("registrosBody");
-const personasBody = document.getElementById("personasBody");
-const exportBtn = document.getElementById("exportExcel");
-let chart;
+    if (token) {
+        linkLogin.style.display = "none";
+        linkPanel.style.display = "block";
+        linkRegistro.style.display = "block";
+        linkLogout.style.display = "block";
+    }
 
-// ---------------- LOGOUT ----------------
-document.getElementById("logoutBtn").addEventListener("click", e => {
-  e.preventDefault();
-  localStorage.removeItem("token");
-  window.location.href="login.html";
-});
-
-// ---------------- DEBOUNCE ----------------
-function debounce(fn, delay) {
-  let timer;
-  return function(...args){
-    clearTimeout(timer);
-    timer = setTimeout(()=> fn.apply(this,args), delay);
-  };
-}
-
-// ---------------- CARGAR PERSONAS ----------------
-async function cargarPersonas() {
-  try {
-    const res = await fetch("/personas", { headers:{ "Authorization": `Bearer ${token}` } });
-    const personas = await res.json();
-    personasBody.innerHTML = "";
-    personas.forEach(p => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${p.nombre}</td>
-        <td>${p.sede}</td>
-        <td>${p.activo ? "Sí" : "No"}</td>
-        <td><button class="btn btn-sm btn-primary toggleBtn">Toggle</button></td>
-      `;
-      tr.querySelector(".toggleBtn").addEventListener("click", async () => {
-        await fetch(`/personas/${p.id}/toggle`, {
-          method:"POST",
-          headers:{ "Authorization": `Bearer ${token}` }
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", e => {
+            e.preventDefault();
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
         });
-        cargarPersonas();
-      });
-      personasBody.appendChild(tr);
-    });
-  } catch(e){ console.error("Error cargando personas:", e); }
-}
-
-// ---------------- CARGAR REGISTROS ----------------
-async function cargarRegistros() {
-  try {
-    const fecha = fechaFiltro.value;
-    const busqueda = busquedaGeneral.value.trim().toLowerCase();
-    const params = new URLSearchParams();
-    if(fecha) params.append("fecha", fecha);
-    if(busqueda) params.append("busqueda", busqueda); // ← filtro global único
-
-    const res = await fetch("/asistencias?" + params.toString(), {
-      headers:{ "Authorization": `Bearer ${token}` }
-    });
-
-    if(!res.ok){
-      registrosBody.innerHTML = `<tr><td colspan="4">Error cargando registros</td></tr>`;
-      return;
     }
 
-    const registros = await res.json();
-    registrosBody.innerHTML = "";
+    const hamburger = document.getElementById("hamburger");
+    const navLinks = document.getElementById("navLinks");
+    hamburger.addEventListener("click", () => navLinks.classList.toggle("show"));
 
-    if(registros.length === 0){
-      registrosBody.innerHTML = `<tr><td colspan="4">No hay registros que coincidan con los filtros.</td></tr>`;
-    } else {
-      registros.forEach(r => {
-        const tr = document.createElement("tr");
-        tr.className = r.tipo;
-        tr.innerHTML = `
-          <td>${r.nombre}</td>
-          <td>${r.sede}</td>
-          <td>${r.tipo}</td>
-          <td>${new Date(r.fecha).toLocaleString()}</td>
-        `;
-        registrosBody.appendChild(tr);
-      });
+    // FACE API
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const resultado = document.getElementById("resultado");
+    const selectTipo = document.getElementById("tipoRegistro");
+    const overlay = document.getElementById("overlayMensaje");
+    const ctx = canvas.getContext("2d");
+
+    let tipoSeleccionado = "";
+    let procesando = false;
+    let intervalDetect = null;
+
+    const sonidoOK = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+    const sonidoError = new Audio("https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg");
+
+    await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+    await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
+    await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
+    resultado.innerText = "Selecciona acción...";
+    resultado.className = "estado-esperando";
+
+    async function activarCamara() {
+        if (intervalDetect) clearInterval(intervalDetect);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            intervalDetect = setInterval(detectar, 200);
+        } catch (err) {
+            resultado.innerText = "No se pudo acceder a la cámara ❌";
+            resultado.className = "estado-error";
+            console.error(err);
+        }
     }
 
-    actualizarGrafico(registros);
+    function cerrarCamara() {
+        if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+        if (intervalDetect) clearInterval(intervalDetect);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
 
-  } catch(e){ console.error("Error cargando registros:", e); }
-}
+    selectTipo.addEventListener("change", () => {
+        tipoSeleccionado = selectTipo.value;
+        if (!tipoSeleccionado) {
+            cerrarCamara();
+            resultado.innerText = "Selecciona acción...";
+            resultado.className = "estado-esperando";
+            return;
+        }
+        activarCamara();
+    });
 
-// ---------------- ACTUALIZAR GRÁFICO ----------------
-function actualizarGrafico(data){
-  const ctx = document.getElementById("graficoAsistencias").getContext("2d");
-  const tipos = ["entrada","salida","descanso_salida","descanso_entrada"];
-  const counts = tipos.map(t => data.filter(r => r.tipo===t).length);
+    async function detectar() {
+        if (!tipoSeleccionado || procesando) return;
+        procesando = true;
 
-  if(chart) chart.destroy();
-  chart = new Chart(ctx, {
-    type:"bar",
-    data:{
-      labels:["Entrada","Salida","Descanso Salida","Descanso Entrada"],
-      datasets:[{
-        label:"Cantidad",
-        data:counts,
-        backgroundColor:["#0d6efd","#dc3545","#ffc107","#198754"]
-      }]
-    },
-    options:{ responsive:true, plugins:{ legend:{ display:false } } }
-  });
-}
+        const deteccion = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+            .withFaceLandmarks()
+            .withFaceDescriptor();
 
-// ---------------- EXPORTAR EXCEL ----------------
-exportBtn.addEventListener("click", async () => {
-  const fecha = fechaFiltro.value;
-  const busqueda = busquedaGeneral.value.trim().toLowerCase();
-  const params = new URLSearchParams();
-  if(fecha) params.append("fecha", fecha);
-  if(busqueda) params.append("busqueda", busqueda); // ← único filtro global
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const res = await fetch("/exportar-registros?" + params.toString(), {
-    headers:{ "Authorization": `Bearer ${token}` }
-  });
+        if (!deteccion) {
+            resultado.innerText = "Buscando rostro...";
+            resultado.className = "estado-esperando";
+            procesando = false;
+            return;
+        }
 
-  if(!res.ok){
-    const data = await res.json();
-    alert(data.msg || "Error al exportar");
-    return;
-  }
+        const resizedDetections = faceapi.resizeResults(deteccion, { width: canvas.width, height: canvas.height });
+        const box = resizedDetections.detection.box;
 
-  const blob = await res.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "registros.xlsx";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.URL.revokeObjectURL(url);
-});
+        // ------------------- Enviar a servidor -------------------
+        let nombreUsuario = "";
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
 
-// ---------------- EVENTOS FILTROS ----------------
-fechaFiltro.addEventListener("input", cargarRegistros);
-busquedaGeneral.addEventListener("input", debounce(cargarRegistros, 300));
+        try {
+            const res = await fetch("/reconocer", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ descriptor: Array.from(deteccion.descriptor), tipo: tipoSeleccionado })
+            });
+            const data = await res.json();
 
-// ---------------- INICIALIZAR ----------------
-window.addEventListener("load", () => {
-  cargarPersonas();
-  cargarRegistros();
+            if (res.ok && data.ok) {
+                nombreUsuario = data.nombre || "Desconocido";
+                const hora = new Date().getHours();
+                const saludo = hora < 12 ? "¡Buenos días" : (hora < 19 ? "¡Buenas tardes" : "¡Buenas noches");
+                overlay.innerText = `${saludo} ${nombreUsuario} ✅`;
+                overlay.style.display = "block";
+                sonidoOK.play();
+                cerrarCamara();
+                setTimeout(() => {
+                    overlay.style.display = "none";
+                    tipoSeleccionado = "";
+                    selectTipo.value = "";
+                    resultado.innerText = "Selecciona acción...";
+                    resultado.className = "estado-esperando";
+                }, 3000);
+            } else {
+                nombreUsuario = "No reconocido";
+                resultado.innerText = data.mensaje || "Usuario no reconocido";
+                resultado.className = "estado-error";
+                sonidoError.play();
+            }
+        } catch (err) {
+            nombreUsuario = "Error";
+            resultado.innerText = "Error de conexión o servidor ❌";
+            resultado.className = "estado-error";
+            console.error(err);
+            sonidoError.play();
+        }
+
+        // ------------------- Dibujar en canvas -------------------
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = `hsl(${Date.now() % 360}, 100%, 50%)`;
+        ctx.shadowColor = "#00ffcc";
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.roundRect(box.x, box.y, box.width, box.height, 12);
+        ctx.stroke();
+
+        // Nombre sobre la caja
+        ctx.font = "20px Arial";
+        ctx.fillStyle = "#00ffcc";
+        ctx.textAlign = "center";
+        ctx.fillText(nombreUsuario, box.x + box.width/2, box.y - 10);
+
+        // Landmarks
+        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+
+        procesando = false;
+    }
 });
 </script>
+
 <footer class="footer-custom">
   <div class="footer-content">
     <span class="powered">Powered by</span>
@@ -299,7 +404,6 @@ window.addEventListener("load", () => {
 </footer>
 
 <script>
-  // Año automático
   document.getElementById("year").textContent = new Date().getFullYear();
 </script>
 </body>
