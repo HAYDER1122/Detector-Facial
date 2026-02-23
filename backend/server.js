@@ -254,31 +254,34 @@ app.get("/asistencias", verificarToken, (req, res) => {
   `;
   const params = [];
 
-  // Filtrar por fecha
+  // 📅 Filtrar por fecha
   if (fecha) {
     sql += " AND DATE(r.fecha_hora) = ?";
     params.push(fecha);
   }
 
-  // Búsqueda global case-insensitive
+  // 🔎 Filtrar SOLO por nombre o sede
   if (busqueda) {
     sql += ` AND (
       LOWER(p.nombre) LIKE ? OR
-      LOWER(p.sede) LIKE ? OR
-      LOWER(r.tipo) LIKE ?
+      LOWER(p.sede) LIKE ?
     )`;
     const like = `%${busqueda.toLowerCase()}%`;
-    params.push(like, like, like);
+    params.push(like, like);
   }
 
   sql += " ORDER BY r.fecha_hora DESC";
 
   db.query(sql, params, (err, rows) => {
-    if (err) return res.status(500).send([]);
+    if (err) {
+      console.error("Error consultando asistencias:", err);
+      return res.status(500).send([]);
+    }
     res.send(rows);
   });
 });
-// ----------------- Exportar registros a Excel (búsqueda global) -----------------
+  
+// ----------------- Exportar registros a Excel -----------------
 app.get("/exportar-registros", verificarToken, async (req, res) => {
   try {
     const { fecha, busqueda } = req.query;
@@ -291,27 +294,29 @@ app.get("/exportar-registros", verificarToken, async (req, res) => {
     `;
     const params = [];
 
-    // Filtrar por fecha
+    // 📅 Filtrar por fecha
     if (fecha) {
       sql += " AND DATE(r.fecha_hora) = ?";
       params.push(fecha);
     }
 
-    // Búsqueda global case-insensitive
+    // 🔎 Filtrar SOLO por nombre o sede
     if (busqueda) {
       sql += ` AND (
         LOWER(p.nombre) LIKE ? OR
-        LOWER(p.sede) LIKE ? OR
-        LOWER(r.tipo) LIKE ?
+        LOWER(p.sede) LIKE ?
       )`;
       const like = `%${busqueda.toLowerCase()}%`;
-      params.push(like, like, like);
+      params.push(like, like);
     }
 
     sql += " ORDER BY r.fecha_hora DESC";
 
     db.query(sql, params, async (err, rows) => {
-      if (err) return res.status(500).send({ ok: false, msg: "Error al consultar registros" });
+      if (err) {
+        console.error("Error consultando registros:", err);
+        return res.status(500).send({ ok: false, msg: "Error al consultar registros" });
+      }
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Registros");
@@ -333,13 +338,20 @@ app.get("/exportar-registros", verificarToken, async (req, res) => {
       });
 
       worksheet.getColumn("fecha_hora").numFmt = "yyyy-mm-dd hh:mm:ss";
+
       worksheet.getRow(1).eachCell(cell => {
         cell.font = { bold: true };
         cell.alignment = { vertical: "middle", horizontal: "center" };
       });
 
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      res.setHeader("Content-Disposition", `attachment; filename=registros.xlsx`);
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=registros.xlsx`
+      );
 
       await workbook.xlsx.write(res);
       res.end();
