@@ -232,7 +232,7 @@ select {
 
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
-    // ---------------- NAVBAR ----------------
+    // NAVBAR
     const token = localStorage.getItem("token");
     const linkLogin = document.getElementById("linkLogin");
     const linkPanel = document.getElementById("linkPanel");
@@ -259,12 +259,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const navLinks = document.getElementById("navLinks");
     hamburger.addEventListener("click", () => navLinks.classList.toggle("show"));
 
-    // ---------------- FaceAPI ----------------
+    // FACE API
     const video = document.getElementById("video");
     const canvas = document.getElementById("canvas");
     const resultado = document.getElementById("resultado");
     const selectTipo = document.getElementById("tipoRegistro");
     const overlay = document.getElementById("overlayMensaje");
+    const ctx = canvas.getContext("2d");
 
     let tipoSeleccionado = "";
     let procesando = false;
@@ -295,7 +296,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     function cerrarCamara() {
         if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
         if (intervalDetect) clearInterval(intervalDetect);
-        const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
@@ -313,11 +313,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     async function detectar() {
         if (!tipoSeleccionado || procesando) return;
         procesando = true;
+
         const deteccion = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
             .withFaceLandmarks()
             .withFaceDescriptor();
 
-        const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         if (!deteccion) {
@@ -327,21 +327,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
-        // Dibujar marco animado
         const resizedDetections = faceapi.resizeResults(deteccion, { width: canvas.width, height: canvas.height });
         const box = resizedDetections.detection.box;
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = `hsl(${Date.now() % 360}, 100%, 50%)`;
-        ctx.shadowColor = "#00ffcc";
-        ctx.shadowBlur = 15;
-        ctx.beginPath();
-        ctx.roundRect(box.x, box.y, box.width, box.height, 12);
-        ctx.stroke();
-
-        // Dibujar landmarks
-        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
 
         // ------------------- Enviar a servidor -------------------
+        let nombreUsuario = "";
         const headers = { "Content-Type": "application/json" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -354,9 +344,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             const data = await res.json();
 
             if (res.ok && data.ok) {
+                nombreUsuario = data.nombre || "Desconocido";
                 const hora = new Date().getHours();
                 const saludo = hora < 12 ? "¡Buenos días" : (hora < 19 ? "¡Buenas tardes" : "¡Buenas noches");
-                overlay.innerText = `${saludo} ${data.nombre || ''} ✅`;
+                overlay.innerText = `${saludo} ${nombreUsuario} ✅`;
                 overlay.style.display = "block";
                 sonidoOK.play();
                 cerrarCamara();
@@ -368,16 +359,36 @@ document.addEventListener("DOMContentLoaded", async () => {
                     resultado.className = "estado-esperando";
                 }, 3000);
             } else {
+                nombreUsuario = "No reconocido";
                 resultado.innerText = data.mensaje || "Usuario no reconocido";
                 resultado.className = "estado-error";
                 sonidoError.play();
             }
         } catch (err) {
+            nombreUsuario = "Error";
             resultado.innerText = "Error de conexión o servidor ❌";
             resultado.className = "estado-error";
             console.error(err);
             sonidoError.play();
         }
+
+        // ------------------- Dibujar en canvas -------------------
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = `hsl(${Date.now() % 360}, 100%, 50%)`;
+        ctx.shadowColor = "#00ffcc";
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.roundRect(box.x, box.y, box.width, box.height, 12);
+        ctx.stroke();
+
+        // Nombre sobre la caja
+        ctx.font = "20px Arial";
+        ctx.fillStyle = "#00ffcc";
+        ctx.textAlign = "center";
+        ctx.fillText(nombreUsuario, box.x + box.width/2, box.y - 10);
+
+        // Landmarks
+        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
 
         procesando = false;
     }
