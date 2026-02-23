@@ -15,10 +15,40 @@ video { border-radius:10px; border:2px solid #00ffcc; }
 canvas { position:absolute; top:0; left:0; border-radius:10px; pointer-events:none; }
 #mensaje { margin-top:15px; font-weight:bold; }
 
-/* Navbar y Footer omitidos para simplicidad, puedes añadir los tuyos */
+/* Navbar */
+.navbar { display:flex; justify-content:space-between; align-items:center; background:#111827; padding:15px 25px; box-shadow:0 4px 12px rgba(0,0,0,0.5); }
+.navbar .brand { font-size:1.4em; font-weight:bold; color:#00ffcc; }
+.navbar .nav-links { list-style:none; display:flex; gap:25px; margin:0; padding:0; }
+.navbar .nav-links li a { color:white; text-decoration:none; font-weight:bold; transition:0.3s; }
+.navbar .nav-links li a:hover { color:#00ffcc; }
+.hamburger{ display:none; flex-direction:column; cursor:pointer; gap:5px; }
+.hamburger div{ width:25px; height:3px; background:white; border-radius:2px; }
+@media (max-width:768px){
+  .nav-links{ display:none; flex-direction:column; position:absolute; top:65px; right:20px; background:#111827; padding:15px; border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,0.6); }
+  .nav-links.show{ display:flex; }
+  .hamburger{ display:flex; }
+}
+
+/* Footer */
+.footer-custom { background:#111827; padding:25px 0; border-top:1px solid rgba(255,255,255,0.08); margin-top:auto; }
+.footer-content { text-align:center; font-size:0.9em; color:#aaa; }
+.brand-footer { color:#00ffcc; font-weight:bold; letter-spacing:2px; animation: glowFooter 2s ease-in-out infinite alternate; }
+@keyframes glowFooter { from{ text-shadow:0 0 5px #00ffcc; } to{ text-shadow:0 0 15px #00ffcc; } }
 </style>
 </head>
 <body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="brand">Control Biométrico</div>
+  <div class="hamburger" id="hamburger"><div></div><div></div><div></div></div>
+  <ul class="nav-links" id="navLinks">
+    <li id="linkLogin"><a href="login.html">Login</a></li>
+    <li id="linkRegistro" style="display:none;"><a href="index.html">Inicio</a></li>
+    <li id="linkPanel" style="display:none;"><a href="admin.html">Panel</a></li>
+    <li id="linkLogout" style="display:none;"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
+  </ul>
+</nav>
 
 <h1>Registrar Persona</h1>
 
@@ -38,8 +68,17 @@ canvas { position:absolute; top:0; left:0; border-radius:10px; pointer-events:no
   </div>
 </div>
 
+<footer class="footer-custom">
+  <div class="footer-content">
+    <span class="powered">Powered by</span>
+    <span class="brand-footer">HOPD</span>
+    <div class="year">© <span id="year"></span> Control Biométrico</div>
+  </div>
+</footer>
+
 <script src="/js/face-api.min.js"></script>
 <script>
+// Variables
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -72,41 +111,49 @@ async function activarCamara() {
 // ---------------- Capturar descriptor ----------------
 async function capturarDescriptor() {
   const descriptors = [];
-  for (let i = 0; i < 3; i++) {
-    const deteccion = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
-      .withFaceLandmarks()
-      .withFaceDescriptor();
-    if (!deteccion) {
-      mensaje.innerText = "No se detecta rostro, intenta de nuevo";
-      mensaje.style.color = "red";
+  for (let i=0;i<3;i++){
+    const deteccion = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize:320,scoreThreshold:0.5}))
+      .withFaceLandmarks().withFaceDescriptor();
+    if(!deteccion){
+      mensaje.innerText="No se detecta rostro, intenta de nuevo";
+      mensaje.style.color="red";
       return null;
     }
     descriptors.push(Array.from(deteccion.descriptor));
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r=>setTimeout(r,500));
   }
-  // Promedio de descriptores
-  return descriptors[0].map((_, i) => descriptors.reduce((sum, d) => sum + d[i], 0) / descriptors.length);
+  return descriptors[0].map((_,i)=>descriptors.reduce((sum,d)=>sum+d[i],0)/descriptors.length);
 }
 
-// ---------------- Dibujo en canvas ----------------
-function dibujarRostro(nombre="Detectando...") {
+// ---------------- Dibujo en canvas correctamente escalado ----------------
+let displaySize;
+
+async function dibujarRostro(nombre="Detectando...") {
+  // Crear canvas con face-api
+  const canvasFace = faceapi.createCanvasFromMedia(video);
+  document.getElementById("videoContainer").appendChild(canvasFace);
+  displaySize = { width: video.width, height: video.height };
+  faceapi.matchDimensions(canvasFace, displaySize);
+
   setInterval(async () => {
-    const deteccion = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
-      .withFaceLandmarks()
-      .withFaceDescriptor();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const deteccion = await faceapi.detectSingleFace(
+      video,
+      new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 })
+    ).withFaceLandmarks().withFaceDescriptor();
+
+    canvasFace.getContext('2d').clearRect(0, 0, canvasFace.width, canvasFace.height);
 
     if (deteccion) {
-      const box = deteccion.detection.box;
+      const resizedDetections = faceapi.resizeResults(deteccion, displaySize);
+      const box = resizedDetections.detection.box;
 
-      // Dibujar rectángulo
+      const ctx = canvasFace.getContext('2d');
       ctx.strokeStyle = "#00ffcc";
       ctx.lineWidth = 2;
       ctx.shadowColor = "#00ffcc";
       ctx.shadowBlur = 10;
       ctx.strokeRect(box.x, box.y, box.width, box.height);
 
-      // Nombre
       ctx.font = "16px Arial";
       ctx.fillStyle = "#00ffcc";
       ctx.textAlign = "center";
@@ -116,47 +163,38 @@ function dibujarRostro(nombre="Detectando...") {
 }
 
 // ---------------- Inicializar ----------------
-window.addEventListener("load", async () => {
+window.addEventListener("load", async()=>{
   await cargarModelos();
   await activarCamara();
-  dibujarRostro(); // Dibuja "Detectando..." inicialmente
+  dibujarRostro();
 });
 
 // ---------------- Registrar persona ----------------
-btnRegistrar.addEventListener("click", async () => {
-  const nombre = document.getElementById("nombre").value.trim();
-  const sede = document.getElementById("sede").value;
-  const token = localStorage.getItem("token");
+btnRegistrar.addEventListener("click",async()=>{
+  const nombre=document.getElementById("nombre").value.trim();
+  const sede=document.getElementById("sede").value;
+  const token=localStorage.getItem("token");
+  if(!nombre||!sede){ mensaje.innerText="Completa todos los campos"; mensaje.style.color="red"; return; }
+  mensaje.innerText="Capturando rostro..."; mensaje.style.color="white";
 
-  if (!nombre || !sede) {
-    mensaje.innerText = "Completa todos los campos";
-    mensaje.style.color = "red";
-    return;
-  }
+  const descriptorPromedio=await capturarDescriptor();
+  if(!descriptorPromedio) return;
 
-  mensaje.innerText = "Capturando rostro...";
-  mensaje.style.color = "white";
-
-  const descriptorPromedio = await capturarDescriptor();
-  if (!descriptorPromedio) return;
-
-  const response = await fetch("/registrar-persona", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + token
+  const response=await fetch("/registrar-persona",{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer "+token
     },
-    body: JSON.stringify({ nombre, sede, descriptors: [descriptorPromedio] })
+    body:JSON.stringify({nombre,sede,descriptors:[descriptorPromedio]})
   });
+  const data=await response.json();
+  mensaje.innerText=data.msg;
+  mensaje.style.color=response.ok?"lightgreen":"red";
 
-  const data = await response.json();
-  mensaje.innerText = data.msg;
-  mensaje.style.color = response.ok ? "lightgreen" : "red";
-
-  // Actualizar canvas con el nombre de la persona registrada
-  if (response.ok) dibujarRostro(nombre);
+  if(response.ok) dibujarRostro(nombre);
 });
 </script>
-
+<script>document.getElementById("year").textContent=new Date().getFullYear();</script>
 </body>
 </html>
