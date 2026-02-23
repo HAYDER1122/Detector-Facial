@@ -127,7 +127,7 @@ app.post("/registrar-persona", verificarToken, (req, res) => {
 });
 
 // ----------------- Reconocer y registrar asistencia -----------------
-const FACE_THRESHOLD = 0.75;
+const FACE_THRESHOLD = 0.45;
 app.post("/reconocer", async (req, res) => {
   console.time("Reconocer");
   try {
@@ -140,10 +140,10 @@ app.post("/reconocer", async (req, res) => {
 
     db.query(
       `SELECT p.id, p.nombre, d.descriptor
-       FROM personas p
-       JOIN descriptores d ON d.persona_id = p.id
-       WHERE p.activo = 1
-       LIMIT 100`,
+      FROM personas p
+      JOIN descriptores d ON d.persona_id = p.id
+      WHERE p.activo = 1
+      LIMIT 100`,
       (err, filas) => {
         if (err) return res.status(500).send({ ok: false, mensaje: "Error BD" });
 
