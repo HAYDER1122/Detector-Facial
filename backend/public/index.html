@@ -120,6 +120,51 @@ select {
 .hamburger{
     display:flex;
 }
+
+}
+/* ---------------- FOOTER PROFESIONAL ---------------- */
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#panel {
+    flex: 1;
+}
+
+.footer-custom {
+    background: #111827; /* mismo color navbar */
+    padding: 20px 0;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    margin-top: auto;
+}
+
+.footer-content {
+    text-align: center;
+}
+
+.iniciales {
+    color: #00ffcc;
+    font-weight: bold;
+    font-size: 1.2em;
+    letter-spacing: 4px;
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+/* Animación glow elegante */
+@keyframes glow {
+    from {
+        text-shadow: 0 0 5px #00ffcc,
+                    0 0 10px #00ffcc,
+                    0 0 15px #00ffcc;
+    }
+    to {
+        text-shadow: 0 0 10px #00ffcc,
+                    0 0 20px #00ffcc,
+                    0 0 30px #00ffcc;
+    }
 }
 </style>
 </head>
@@ -395,9 +440,11 @@ window.addEventListener("unload", () => {
 });
 </script>
 
-
-</body>
-<footer>
-  HOPD
+<footer class="footer-custom">
+  <div class="footer-content">
+    <span class="iniciales">HOPD</span>
+  </div>
 </footer>
+</body>
+
 </html>
