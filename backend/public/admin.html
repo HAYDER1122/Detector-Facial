@@ -41,7 +41,8 @@ if (!localStorage.getItem("token")) window.location.href = "login.html";
     <a class="navbar-brand" href="index.html">Control Biométrico</a>
     <ul class="navbar-nav ms-auto">
       <li class="nav-item"><a class="nav-link" href="index.html">Inicio</a></li>
-      <li class="nav-item"><a class="nav-link" href="registro.html">Registrar Usuario</a></li>
+      <li class="nav-item"><a class="nav-link" href="registro.html">Registrar Personas</a></li>
+      <li id="linkUsuarios" style="display:none;"><a href="usuarios.html">Registrar Usuarios</a></li>
       <li class="nav-item"><a class="nav-link text-danger" href="#" id="logoutBtn">Cerrar sesión</a></li>
     </ul>
   </div>
