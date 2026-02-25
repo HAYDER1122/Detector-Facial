@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crear Usuario</title>
+</head>
+<body>
+    <h2>Crear nuevo usuario</h2>
+
+    <form action="/crear_usuario" method="POST">
+        <label>Usuario:</label>
+        <input type="text" name="username" required><br><br>
+
+        <label>Contraseña:</label>
+        <input type="password" name="password" required><br><br>
+
+        <label>Rol:</label>
+        <select name="rol">
+            <option value="admin">Admin</option>
+            <option value="usuario">Usuario</option>
+        </select><br><br>
+
+        <button type="submit">Crear</button>
+    </form>
+</body>
+</html>
