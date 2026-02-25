@@ -62,7 +62,7 @@ function soloAdmin(req, res, next) {
 }
 
 function soloAdminOOperador(req, res, next) {
-  if (!["admin", "operador"].includes(req.user.role))
+  if (!["admin", "user"].includes(req.user.role))
     return res.status(403).send({ msg: "No autorizado" });
   next();
 }
@@ -369,7 +369,95 @@ app.post("/usuarios", verificarToken, soloAdmin, async (req, res) => {
     res.status(500).json({ msg: "Error del servidor" });
   }
 });
-//esperando git hub
+
+// ----------------- ASISTENCIAS -----------------
+app.get("/asistencias", verificarToken, soloAdminOOperador, (req, res) => {
+  const { fecha, busqueda } = req.query;
+
+  let sql = `
+    SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
+    FROM registros r
+    JOIN personas p ON r.persona_id = p.id
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (fecha) {
+    sql += " AND DATE(r.fecha_hora) = ?";
+    params.push(fecha);
+  }
+
+  if (busqueda) {
+    sql += " AND (LOWER(p.nombre) LIKE ? OR LOWER(p.sede) LIKE ?)";
+    params.push(`%${busqueda.toLowerCase()}%`, `%${busqueda.toLowerCase()}%`);
+  }
+
+  sql += " ORDER BY r.fecha_hora DESC LIMIT 500";
+
+  db.query(sql, params, (err, rows) => {
+    if (err) {
+      console.error("Error obteniendo registros:", err);
+      return res.status(500).json([]);
+    }
+    res.json(rows);
+  });
+});
+
+// ----------------- EXPORTAR EXCEL -----------------
+app.get("/exportar-registros", verificarToken, soloAdminOOperador, async (req, res) => {
+  const { fecha, busqueda } = req.query;
+
+  let sql = `
+    SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
+    FROM registros r
+    JOIN personas p ON r.persona_id = p.id
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (fecha) {
+    sql += " AND DATE(r.fecha_hora) = ?";
+    params.push(fecha);
+  }
+
+  if (busqueda) {
+    sql += " AND (LOWER(p.nombre) LIKE ? OR LOWER(p.sede) LIKE ?)";
+    params.push(`%${busqueda.toLowerCase()}%`, `%${busqueda.toLowerCase()}%`);
+  }
+
+  sql += " ORDER BY r.fecha_hora DESC";
+
+  db.query(sql, params, async (err, rows) => {
+    if (err) {
+      console.error("Error exportando registros:", err);
+      return res.status(500).json({ msg: "Error generando Excel" });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Registros");
+
+    sheet.columns = [
+      { header: "Nombre", key: "nombre", width: 30 },
+      { header: "Sede", key: "sede", width: 20 },
+      { header: "Tipo", key: "tipo", width: 20 },
+      { header: "Fecha/Hora", key: "fecha", width: 25 }
+    ];
+
+    rows.forEach(r => sheet.addRow(r));
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", "attachment; filename=registros.xlsx");
+
+    await workbook.xlsx.write(res);
+    res.end();
+  });
+});
+
+
+
 // SERVIDOR
 
 

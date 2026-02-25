@@ -89,7 +89,7 @@ let role = null;
 try{
   const payload = JSON.parse(atob(token.split('.')[1]));
   role = payload.role;
-  if(role!=="admin" && role!=="operador") window.location.href="login.html";
+  if(role!=="admin" && role!=="user") window.location.href="login.html";
 }catch(e){
   console.error("Token inválido", e);
   localStorage.removeItem("token");
