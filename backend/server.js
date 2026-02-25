@@ -14,20 +14,27 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// ----------------- Conexión MySQL -----------------
-// Parsear DATABASE_URL
-const dbUrl = new URL(process.env.DATABASE_URL);
 
+// Parsear DATABASE_URL
+// ----------------- Conexión MySQL -----------------
 const db = mysql.createPool({
-  host: dbUrl.hostname,             // crossover.proxy.rlwy.net
-  user: dbUrl.username,             // root
-  password: dbUrl.password,         // olUAUFxKCdxJxcnjgUcHmccxlNjJgeHR
-  database: dbUrl.pathname.slice(1),// railway
-  port: Number(dbUrl.port),         // 38474
+  host: process.env.DB_HOST || "crossover.proxy.rlwy.net",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "olUAUFxKCdxJxcnjgUcHmccxlNjJgeHR",
+  database: process.env.DB_NAME || "railway",
+  port: Number(process.env.DB_PORT) || 38474,
   ssl: { rejectUnauthorized: false },
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
+});
+
+db.getConnection((err, conn) => {
+  if (err) console.error("Error conectando BD:", err);
+  else {
+    console.log("DB conectada ✅");
+    conn.release();
+  }
 });
 //env arreglado??
 db.getConnection((err, conn) => {
