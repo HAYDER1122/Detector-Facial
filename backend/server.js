@@ -1,4 +1,4 @@
-// server.js - PRO completo con sede y búsqueda global
+// SERVER 
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2");
@@ -6,23 +6,21 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const path = require("path");
 const ExcelJS = require("exceljs");
-const { URL } = require("url");
 require("dotenv").config();
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-
-// Parsear DATABASE_URL
-// ----------------- Conexión MySQL -----------------
+// CONEXION MYSQL
 const db = mysql.createPool({
   host: process.env.DB_HOST || "crossover.proxy.rlwy.net",
   user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "olUAUFxKCdxJxcnjgUcHmccxlNjJgeHR",
+  password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "railway",
-  port: Number(process.env.DB_PORT) || 38474,
+  port: Number(process.env.DB_PORT) || 3306,
   ssl: { rejectUnauthorized: false },
   waitForConnections: true,
   connectionLimit: 10,
@@ -30,22 +28,16 @@ const db = mysql.createPool({
 });
 
 db.getConnection((err, conn) => {
-  if (err) console.error("Error conectando BD:", err);
+  if (err) console.error("❌ Error conectando BD:", err);
   else {
-    console.log("DB conectada ✅");
-    conn.release();
-  }
-});
-//env arreglado??
-db.getConnection((err, conn) => {
-  if (err) console.error("Error conectando BD:", err);
-  else {
-    console.log("DB conectada ✅");
+    console.log("✅ DB conectada");
     conn.release();
   }
 });
 
-// ----------------- Función JWT -----------------
+
+// MIDDLEWARE JWT
+
 function verificarToken(req, res, next) {
   const header = req.headers["authorization"];
   if (!header) return res.status(401).send({ msg: "Token requerido" });
@@ -60,12 +52,27 @@ function verificarToken(req, res, next) {
   });
 }
 
-// ----------------- Función Euclidean Distance -----------------
+function soloAdmin(req, res, next) {
+  if (req.user.role !== "admin")
+    return res.status(403).send({ msg: "Acceso solo admin" });
+  next();
+}
+
+function soloAdminOOperador(req, res, next) {
+  if (!["admin", "operador"].includes(req.user.role))
+    return res.status(403).send({ msg: "No autorizado" });
+  next();
+}
+
+
+// FUNCION DISTANCIA EUCLIDEANA
+
 function euclideanDistance(a, b) {
   if (typeof a === "string") a = JSON.parse(a);
   if (typeof b === "string") b = JSON.parse(b);
   if (!Array.isArray(a) || !Array.isArray(b)) return 999;
   if (a.length !== b.length) return 999;
+
   let sum = 0;
   for (let i = 0; i < a.length; i++) {
     const diff = Number(a[i]) - Number(b[i]);
@@ -74,18 +81,27 @@ function euclideanDistance(a, b) {
   return Math.sqrt(sum);
 }
 
-// ----------------- Login Admin -----------------
+const FACE_THRESHOLD = 0.45;
+
+
+// LOGIN
+
+
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).send({ msg: "Datos incompletos" });
+
+  if (!username || !password)
+    return res.status(400).send({ msg: "Datos incompletos" });
 
   db.query("SELECT * FROM usuarios WHERE username=?", [username], async (err, rows) => {
     if (err) return res.status(500).send({ msg: "Error BD" });
-    if (rows.length === 0) return res.status(400).send({ msg: "Usuario no encontrado" });
+    if (rows.length === 0)
+      return res.status(400).send({ msg: "Usuario no encontrado" });
 
     const user = rows[0];
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(400).send({ msg: "Contraseña incorrecta" });
+    if (!match)
+      return res.status(400).send({ msg: "Contraseña incorrecta" });
 
     const token = jwt.sign(
       { id: user.id, role: user.rol },
@@ -97,12 +113,51 @@ app.post("/login", (req, res) => {
   });
 });
 
-// ----------------- Registrar Persona -----------------
-app.post("/registrar-persona", verificarToken, (req, res) => {
-  if (req.user.role !== "admin") return res.status(403).send({ msg: "No autorizado" });
 
+// CREAR USUARIO
+
+
+app.post("/crear-usuario", verificarToken, soloAdmin, async (req, res) => {
+  const { username, password, rol } = req.body;
+
+  if (!username || !password || !rol)
+    return res.status(400).send({ msg: "Datos incompletos" });
+
+  if (!["admin", "operador", "visor"].includes(rol))
+    return res.status(400).send({ msg: "Rol inválido" });
+
+  db.query("SELECT id FROM usuarios WHERE username=?", [username], async (err, rows) => {
+    if (rows.length > 0)
+      return res.status(400).send({ msg: "Usuario ya existe" });
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    db.query(
+      "INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)",
+      [username, hashed, rol],
+      err2 => {
+        if (err2) return res.status(500).send({ msg: "Error creando usuario" });
+        res.send({ ok: true, msg: "Usuario creado correctamente ✅" });
+      }
+    );
+  });
+});
+
+app.get("/usuarios", verificarToken, soloAdmin, (req, res) => {
+  db.query("SELECT id, username, rol FROM usuarios", (err, rows) => {
+    if (err) return res.status(500).send([]);
+    res.send(rows);
+  });
+});
+
+
+// REGISTRAR PERSONA
+
+
+app.post("/registrar-persona", verificarToken, soloAdmin, (req, res) => {
   const { nombre, sede, descriptors } = req.body;
-  if (!nombre || !sede || !descriptors || !Array.isArray(descriptors))
+
+  if (!nombre || !sede || !Array.isArray(descriptors))
     return res.status(400).send({ msg: "Datos incompletos" });
 
   const nuevoDescriptor = descriptors[0];
@@ -111,14 +166,11 @@ app.post("/registrar-persona", verificarToken, (req, res) => {
     if (err) return res.status(500).send({ msg: "Error BD" });
 
     for (const row of rows) {
-      try {
-        const descriptorGuardado = JSON.parse(row.descriptor);
-        const dist = euclideanDistance(descriptorGuardado, nuevoDescriptor);
-        if (dist < 0.6) return res.status(400).send({ msg: "Rostro ya registrado" });
-      } catch {}
+      const dist = euclideanDistance(row.descriptor, nuevoDescriptor);
+      if (dist < 0.6)
+        return res.status(400).send({ msg: "Rostro ya registrado" });
     }
 
-    // Guardar persona
     db.query(
       "INSERT INTO personas (nombre, sede, activo) VALUES (?, ?, 1)",
       [nombre, sede],
@@ -128,116 +180,119 @@ app.post("/registrar-persona", verificarToken, (req, res) => {
         const personaId = result.insertId;
         const values = descriptors.map(d => [personaId, JSON.stringify(d)]);
 
-        db.query("INSERT INTO descriptores (persona_id, descriptor) VALUES ?", [values], err3 => {
-          if (err3) return res.status(500).send({ msg: "Error guardando descriptores" });
-          res.send({ msg: "Persona registrada correctamente ✅" });
-        });
+        db.query(
+          "INSERT INTO descriptores (persona_id, descriptor) VALUES ?",
+          [values],
+          err3 => {
+            if (err3)
+              return res.status(500).send({ msg: "Error guardando descriptores" });
+
+            res.send({ msg: "Persona registrada correctamente ✅" });
+          }
+        );
       }
     );
   });
 });
 
-// ----------------- Reconocer y registrar asistencia -----------------
-const FACE_THRESHOLD = 0.45;
-app.post("/reconocer", async (req, res) => {
+
+// RECONOCER 
+
+
+app.post("/reconocer", (req, res) => {
   console.time("Reconocer");
-  try {
-    const { descriptor, tipo } = req.body;
-    const tiposValidos = ["entrada", "salida", "descanso", "entrada_descanso"];
-    if (!descriptor || !Array.isArray(descriptor) || descriptor.length === 0)
-      return res.status(400).send({ ok: false, mensaje: "Descriptor inválido" });
-    if (!tipo || !tiposValidos.includes(tipo))
-      return res.status(400).send({ ok: false, mensaje: "Tipo inválido" });
+
+  const { descriptor, tipo } = req.body;
+  const tiposValidos = ["entrada", "salida", "descanso", "entrada_descanso"];
+
+  if (!descriptor || !Array.isArray(descriptor))
+    return res.status(400).send({ ok: false });
+
+  if (!tiposValidos.includes(tipo))
+    return res.status(400).send({ ok: false });
+
+  db.query(`
+    SELECT p.id, p.nombre, d.descriptor
+    FROM personas p
+    JOIN descriptores d ON d.persona_id = p.id
+    WHERE p.activo = 1
+    LIMIT 100
+  `, (err, filas) => {
+
+    if (err) return res.status(500).send({ ok: false });
+
+    let personaCoincidente = null;
+    let minDist = 999;
+
+    filas.forEach(f => {
+      const dist = euclideanDistance(f.descriptor, descriptor);
+      if (dist < minDist) {
+        minDist = dist;
+        personaCoincidente = f;
+      }
+    });
+
+    if (!personaCoincidente || minDist > FACE_THRESHOLD)
+      return res.send({ ok: false, mensaje: "Rostro no reconocido" });
 
     db.query(
-      `SELECT p.id, p.nombre, d.descriptor
-      FROM personas p
-      JOIN descriptores d ON d.persona_id = p.id
-      WHERE p.activo = 1
-      LIMIT 100`,
-      (err, filas) => {
-        if (err) return res.status(500).send({ ok: false, mensaje: "Error BD" });
+      `SELECT tipo FROM registros WHERE persona_id=? AND DATE(fecha_hora)=CURDATE()`,
+      [personaCoincidente.id],
+      (err2, registros) => {
 
-        const personasValidas = filas
-          .map(f => {
-            try {
-              const desc = JSON.parse(f.descriptor);
-              if (Array.isArray(desc) && desc.length > 0) return { id: f.id, nombre: f.nombre, descriptor: desc };
-            } catch {}
-            return null;
-          })
-          .filter(Boolean);
+        const accionesHoy = registros.map(r => r.tipo);
 
-        if (!personasValidas.length) return res.status(400).send({ ok: false, mensaje: "No hay descriptores válidos" });
+        if (tipo === "entrada" && accionesHoy.includes("entrada"))
+          return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
 
-        // Buscar coincidencia
-        let personaCoincidente = null;
-        let minDist = 999;
-        for (const p of personasValidas) {
-          const dist = euclideanDistance(p.descriptor, descriptor);
-          if (dist < minDist) {
-            minDist = dist;
-            personaCoincidente = p;
-          }
-        }
+        if (tipo === "salida" && !accionesHoy.includes("entrada"))
+          return res.send({ ok: false, mensaje: "No puedes salir sin entrar" });
 
-        if (!personaCoincidente || minDist > FACE_THRESHOLD)
-          return res.send({ ok: false, mensaje: "Rostro no reconocido" });
+        if (tipo === "salida" && accionesHoy.includes("salida"))
+          return res.send({ ok: false, mensaje: "Ya registraste salida hoy" });
+
+        if (tipo === "descanso" && !accionesHoy.includes("entrada"))
+          return res.send({ ok: false, mensaje: "No puedes descansar sin entrar" });
+
+        if (tipo === "descanso" && accionesHoy.includes("descanso_salida"))
+          return res.send({ ok: false, mensaje: "Ya registraste descanso hoy" });
+
+        if (tipo === "entrada_descanso" && !accionesHoy.includes("descanso_salida"))
+          return res.send({ ok: false, mensaje: "No puedes entrar de descanso sin salir antes" });
+
+        if (tipo === "entrada_descanso" && accionesHoy.includes("descanso_entrada"))
+          return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
+
+        const tipoDBMap = {
+          entrada: "entrada",
+          salida: "salida",
+          descanso: "descanso_salida",
+          entrada_descanso: "descanso_entrada"
+        };
 
         db.query(
-          `SELECT tipo FROM registros WHERE persona_id=? AND DATE(fecha_hora)=CURDATE()`,
-          [personaCoincidente.id],
-          (err2, registros) => {
-            if (err2) return res.status(500).send({ ok: false, mensaje: "Error al consultar registros" });
+          "INSERT INTO registros (persona_id, tipo, fecha_hora) VALUES (?, ?, NOW())",
+          [personaCoincidente.id, tipoDBMap[tipo]],
+          err3 => {
+            console.timeEnd("Reconocer");
+            if (err3) return res.status(500).send({ ok: false });
 
-            const accionesHoy = registros.map(r => r.tipo);
-
-            // Validaciones de flujo
-            if (tipo === "entrada" && accionesHoy.includes("entrada"))
-              return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
-            if (tipo === "salida" && !accionesHoy.includes("entrada"))
-              return res.send({ ok: false, mensaje: "No puedes salir sin haber entrado" });
-            if (tipo === "salida" && accionesHoy.includes("salida"))
-              return res.send({ ok: false, mensaje: "Ya registraste salida hoy" });
-            if (tipo === "descanso" && !accionesHoy.includes("entrada"))
-              return res.send({ ok: false, mensaje: "No puedes tomar descanso sin entrar primero" });
-            if (tipo === "descanso" && accionesHoy.includes("descanso_salida"))
-              return res.send({ ok: false, mensaje: "Ya registraste descanso hoy" });
-            if (tipo === "entrada_descanso" && !accionesHoy.includes("descanso_salida"))
-              return res.send({ ok: false, mensaje: "No puedes entrar de descanso sin haber salido de descanso" });
-            if (tipo === "entrada_descanso" && accionesHoy.includes("descanso_entrada"))
-              return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
-
-            // Mapear tipo
-            const tipoDBMap = {
-              entrada: "entrada",
-              salida: "salida",
-              descanso: "descanso_salida",
-              entrada_descanso: "descanso_entrada"
-            };
-            const tipoDB = tipoDBMap[tipo];
-
-            db.query(
-              "INSERT INTO registros (persona_id, tipo, fecha_hora) VALUES (?, ?, NOW())",
-              [personaCoincidente.id, tipoDB],
-              err3 => {
-                console.timeEnd("Reconocer");
-                if (err3) return res.status(500).send({ ok: false, mensaje: "Error guardando registro" });
-                res.send({ ok: true, nombre: personaCoincidente.nombre, tipo, mensaje: `${personaCoincidente.nombre} - ${tipo} registrado ✅` });
-              }
-            );
+            res.send({
+              ok: true,
+              nombre: personaCoincidente.nombre,
+              mensaje: `${personaCoincidente.nombre} - ${tipo} registrado ✅`
+            });
           }
         );
       }
     );
-  } catch (e) {
-    console.error("Error en /reconocer:", e);
-    console.timeEnd("Reconocer");
-    res.status(500).send({ ok: false, mensaje: "Error interno servidor" });
-  }
+  });
 });
 
-// ----------------- Endpoint panel -----------------
+
+// PERSONAS
+
+
 app.get("/personas", verificarToken, (req, res) => {
   db.query("SELECT id, nombre, sede, activo FROM personas", (err, rows) => {
     if (err) return res.status(500).send([]);
@@ -245,193 +300,81 @@ app.get("/personas", verificarToken, (req, res) => {
   });
 });
 
-app.post("/personas/:id/toggle", verificarToken, (req, res) => {
-  const id = req.params.id;
-  db.query("UPDATE personas SET activo = NOT activo WHERE id=?", [id], err => {
-    if (err) return res.status(500).send({ ok: false, msg: "Error BD" });
-    res.send({ ok: true, msg: "Estado cambiado correctamente" });
+app.post("/personas/:id/toggle", verificarToken, soloAdmin, (req, res) => {
+  db.query("UPDATE personas SET activo = NOT activo WHERE id=?", [req.params.id], err => {
+    if (err) return res.status(500).send({ ok: false });
+    res.send({ ok: true });
   });
 });
-// ----------------- Editar persona -----------------
-app.put("/personas/:id", verificarToken, (req, res) => {
-  if (req.user.role !== "admin")
-    return res.status(403).send({ msg: "No autorizado" });
 
+app.put("/personas/:id", verificarToken, soloAdmin, (req, res) => {
   const { nombre, sede } = req.body;
-  const { id } = req.params;
-
-  if (!nombre || !sede)
-    return res.status(400).send({ msg: "Datos incompletos" });
-
   db.query(
     "UPDATE personas SET nombre=?, sede=? WHERE id=?",
-    [nombre, sede, id],
-    (err, result) => {
-      if (err) {
-        console.error("Error actualizando persona:", err);
-        return res.status(500).send({ msg: "Error BD" });
-      }
-
-      if (result.affectedRows === 0)
-        return res.status(404).send({ msg: "Persona no encontrada" });
-
-      res.send({ ok: true, msg: "Persona actualizada correctamente" });
+    [nombre, sede, req.params.id],
+    err => {
+      if (err) return res.status(500).send({ ok: false });
+      res.send({ ok: true });
     }
   );
 });
-// ----------------- Eliminar persona -----------------
-app.delete("/personas/:id", verificarToken, (req, res) => {
-  if (req.user.role !== "admin")
-    return res.status(403).send({ msg: "No autorizado" });
 
-  const { id } = req.params;
-
-  // Primero eliminamos descriptores para evitar error de FK
-  db.query("DELETE FROM descriptores WHERE persona_id=?", [id], err => {
-    if (err) {
-      console.error("Error eliminando descriptores:", err);
-      return res.status(500).send({ msg: "Error BD" });
-    }
-
-    db.query("DELETE FROM personas WHERE id=?", [id], (err2, result) => {
-      if (err2) {
-        console.error("Error eliminando persona:", err2);
-        return res.status(500).send({ msg: "Error BD" });
-      }
-
-      if (result.affectedRows === 0)
-        return res.status(404).send({ msg: "Persona no encontrada" });
-
-      res.send({ ok: true, msg: "Persona eliminada correctamente" });
+app.delete("/personas/:id", verificarToken, soloAdmin, (req, res) => {
+  db.query("DELETE FROM descriptores WHERE persona_id=?", [req.params.id], () => {
+    db.query("DELETE FROM personas WHERE id=?", [req.params.id], err => {
+      if (err) return res.status(500).send({ ok: false });
+      res.send({ ok: true });
     });
   });
 });
-// ----------------- Endpoint asistencias para panel -----------------
-app.get("/asistencias", verificarToken, (req, res) => {
-  const { fecha, busqueda } = req.query;
+// Crear usuario
+app.post("/usuarios", verificarToken, soloAdmin, async (req, res) => {
+  const { username, password, rol, activo } = req.body;
 
-  let sql = `
-    SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
-    FROM registros r
-    JOIN personas p ON r.persona_id = p.id
-    WHERE 1=1
-  `;
-  const params = [];
-
-  // 📅 Filtrar por fecha
-  if (fecha) {
-    sql += " AND DATE(r.fecha_hora) = ?";
-    params.push(fecha);
+  if (!username || !password || !rol) {
+    return res.status(400).json({ msg: "Completa todos los campos" });
   }
 
-  // 🔎 Filtrar SOLO por nombre o sede
-  if (busqueda) {
-    sql += ` AND (
-      LOWER(p.nombre) LIKE ? OR
-      LOWER(p.sede) LIKE ?
-    )`;
-    const like = `%${busqueda.toLowerCase()}%`;
-    params.push(like, like);
+  if (!["admin","user"].includes(rol)) {
+    return res.status(400).json({ msg: "Rol inválido" });
   }
 
-  sql += " ORDER BY r.fecha_hora DESC";
-
-  db.query(sql, params, (err, rows) => {
-    if (err) {
-      console.error("Error consultando asistencias:", err);
-      return res.status(500).send([]);
-    }
-    res.send(rows);
-  });
-});
-  
-// ----------------- Exportar registros a Excel -----------------
-app.get("/exportar-registros", verificarToken, async (req, res) => {
   try {
-    const { fecha, busqueda } = req.query;
+    // Usamos el pool que ya definiste
+    db.query(
+      "SELECT * FROM usuarios WHERE username = ?",
+      [username],
+      async (err, rows) => {
+        if (err) return res.status(500).json({ msg: "Error BD" });
+        if (rows.length > 0) return res.status(400).json({ msg: "Usuario ya existe" });
 
-    let sql = `
-      SELECT r.tipo, r.fecha_hora, p.nombre, p.sede
-      FROM registros r
-      JOIN personas p ON p.id = r.persona_id
-      WHERE 1=1
-    `;
-    const params = [];
+        const hash = await bcrypt.hash(password, 10);
 
-    // 📅 Filtrar por fecha
-    if (fecha) {
-      sql += " AND DATE(r.fecha_hora) = ?";
-      params.push(fecha);
-    }
-
-    // 🔎 Filtrar SOLO por nombre o sede
-    if (busqueda) {
-      sql += ` AND (
-        LOWER(p.nombre) LIKE ? OR
-        LOWER(p.sede) LIKE ?
-      )`;
-      const like = `%${busqueda.toLowerCase()}%`;
-      params.push(like, like);
-    }
-
-    sql += " ORDER BY r.fecha_hora DESC";
-
-    db.query(sql, params, async (err, rows) => {
-      if (err) {
-        console.error("Error consultando registros:", err);
-        return res.status(500).send({ ok: false, msg: "Error al consultar registros" });
+        db.query(
+          "INSERT INTO usuarios (username, password, rol, activo, creado_en) VALUES (?, ?, ?, ?, NOW())",
+          [username, hash, rol, activo ? 1 : 0],
+          err2 => {
+            if (err2) return res.status(500).json({ msg: "Error guardando usuario" });
+            res.json({ msg: "Usuario creado correctamente ✅" });
+          }
+        );
       }
+    );
 
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Registros");
-
-      worksheet.columns = [
-        { header: "Nombre", key: "nombre", width: 30 },
-        { header: "Sede", key: "sede", width: 20 },
-        { header: "Tipo", key: "tipo", width: 20 },
-        { header: "Fecha y Hora", key: "fecha_hora", width: 25 }
-      ];
-
-      rows.forEach(r => {
-        worksheet.addRow({
-          nombre: r.nombre,
-          sede: r.sede,
-          tipo: r.tipo,
-          fecha_hora: new Date(r.fecha_hora)
-        });
-      });
-
-      worksheet.getColumn("fecha_hora").numFmt = "yyyy-mm-dd hh:mm:ss";
-
-      worksheet.getRow(1).eachCell(cell => {
-        cell.font = { bold: true };
-        cell.alignment = { vertical: "middle", horizontal: "center" };
-      });
-
-      res.setHeader(
-        "Content-Type",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      );
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename=registros.xlsx`
-      );
-
-      await workbook.xlsx.write(res);
-      res.end();
-    });
-
-  } catch (error) {
-    console.error("Error generando Excel:", error);
-    res.status(500).send({ ok: false, msg: "Error generando Excel" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Error del servidor" });
   }
 });
 
-// ----------------- Servir login -----------------
+// SERVIDOR
+
+
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public/login.html"));
 });
 
-// ----------------- Iniciar servidor -----------------
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, "0.0.0.0", () => console.log("Servidor activo en puerto " + PORT));
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("🚀 Servidor activo en puerto " + PORT);
+});

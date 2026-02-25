@@ -1,25 +1,159 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Crear Usuario</title>
+<meta charset="UTF-8">
+<title>Agregar Usuario - Control Biométrico</title>
+<style>
+body {
+    background:#0b0f17;
+    color:white;
+    font-family:Arial, sans-serif;
+    text-align:center;
+    margin:0;
+    padding:0;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+}
+
+h1 {
+    color:#00ffcc;
+    margin-top:30px;
+    text-shadow: 0 0 5px #00ffcc;
+}
+
+#formContainer {
+    background:#111827;
+    max-width:400px;
+    margin:30px auto;
+    padding:25px;
+    border-radius:12px;
+    box-shadow:0 10px 25px rgba(0,255,204,0.2);
+}
+
+input, select {
+    width:90%;
+    padding:12px;
+    margin:10px 0;
+    border-radius:8px;
+    border:none;
+    font-size:16px;
+    background:#1e293b;
+    color:white;
+}
+
+input::placeholder {
+    color:#aaa;
+}
+
+button {
+    width:95%;
+    padding:12px;
+    margin-top:15px;
+    border:none;
+    border-radius:8px;
+    background:#00ffcc;
+    color:#0b0f17;
+    font-weight:bold;
+    font-size:16px;
+    cursor:pointer;
+    transition:0.3s;
+}
+
+button:hover {
+    background:#00d4aa;
+}
+
+#mensaje {
+    margin-top:15px;
+    font-weight:bold;
+}
+
+.footer-custom {
+    background:#111827;
+    padding:20px 0;
+    margin-top:auto;
+    border-top:1px solid rgba(255,255,255,0.08);
+    font-size:0.9em;
+    color:#aaa;
+}
+
+.brand-footer {
+    color:#00ffcc;
+    font-weight:bold;
+    letter-spacing:2px;
+    animation: glowFooter 2s ease-in-out infinite alternate;
+}
+
+@keyframes glowFooter {
+    from{ text-shadow:0 0 5px #00ffcc; }
+    to{ text-shadow:0 0 15px #00ffcc; }
+}
+</style>
 </head>
 <body>
-    <h2>Crear nuevo usuario</h2>
 
-    <form action="/crear_usuario" method="POST">
-        <label>Usuario:</label>
-        <input type="text" name="username" required><br><br>
+<h1>Agregar Usuario</h1>
 
-        <label>Contraseña:</label>
-        <input type="password" name="password" required><br><br>
+<div id="formContainer">
+    <input type="text" id="username" placeholder="Usuario">
+    <input type="password" id="password" placeholder="Contraseña">
+    <select id="rol">
+        <option value="">Seleccionar rol...</option>
+        <option value="admin">Admin</option>
+        <option value="user">Usuario</option>
+    </select>
+    <select id="activo">
+        <option value="1">Activo</option>
+        <option value="0">Inactivo</option>
+    </select>
+    <button id="btnAgregar">Agregar Usuario</button>
+    <div id="mensaje"></div>
+</div>
 
-        <label>Rol:</label>
-        <select name="rol">
-            <option value="admin">Admin</option>
-            <option value="usuario">Usuario</option>
-        </select><br><br>
+<footer class="footer-custom">
+    <span>Powered by <span class="brand-footer">HOPD</span></span>
+    <div class="year">© <span id="year"></span> Control Biométrico</div>
+</footer>
 
-        <button type="submit">Crear</button>
-    </form>
+<script>
+document.getElementById("year").textContent = new Date().getFullYear();
+
+const token = localStorage.getItem("token"); // Solo admin puede agregar
+
+document.getElementById("btnAgregar").addEventListener("click", async () => {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+    const rol = document.getElementById("rol").value;
+    const activo = document.getElementById("activo").value;
+
+    const mensaje = document.getElementById("mensaje");
+
+    if(!username || !password || !rol){
+        mensaje.innerText = "Completa todos los campos";
+        mensaje.style.color = "red";
+        return;
+    }
+
+    try {
+        const res = await fetch("/usuarios", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({ username, password, rol, activo })
+        });
+        const data = await res.json();
+        mensaje.innerText = data.msg;
+        mensaje.style.color = res.ok ? "lightgreen" : "red";
+    } catch(e){
+        mensaje.innerText = "Error de conexión";
+        mensaje.style.color = "red";
+        console.error(e);
+    }
+});
+</script>
+
 </body>
 </html>

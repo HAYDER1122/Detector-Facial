@@ -191,6 +191,7 @@ select {
         <li id="linkLogin"><a href="login.html">Login</a></li>
         <li id="linkPanel" style="display:none;"><a href="admin.html">Panel</a></li>
         <li id="linkRegistro" style="display:none;"><a href="registro.html">Registro</a></li>
+        <li id="linkUsuarios" style="display:none;"><a href="usuarios.html">Usuarios</a></li>
         <li id="linkLogout" style="display:none;"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
     </ul>
 </nav>
@@ -232,34 +233,60 @@ select {
 
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
-    // NAVBAR
-    const token = localStorage.getItem("token");
-    const linkLogin = document.getElementById("linkLogin");
-    const linkPanel = document.getElementById("linkPanel");
-    const linkRegistro = document.getElementById("linkRegistro");
-    const linkLogout = document.getElementById("linkLogout");
-    const logoutBtn = document.getElementById("logoutBtn");
 
-    if (token) {
-        linkLogin.style.display = "none";
-        linkPanel.style.display = "block";
-        linkRegistro.style.display = "block";
-        linkLogout.style.display = "block";
+// ---------- CONTROL DE ACCESO ----------
+const token = localStorage.getItem("token");
+
+// NAVBAR
+const linkLogin = document.getElementById("linkLogin");
+const linkPanel = document.getElementById("linkPanel");
+const linkRegistro = document.getElementById("linkRegistro");
+const linkUsuarios = document.getElementById("linkUsuarios");
+const linkLogout = document.getElementById("linkLogout");
+
+if (token) {
+    linkLogin.style.display = "none";
+    linkLogout.style.display = "block";
+
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const role = payload.role;
+
+        if (role === "admin") {
+            linkPanel.style.display = "block";
+            linkRegistro.style.display = "block";
+            if (linkUsuarios) linkUsuarios.style.display = "block";
+        } else if (role === "operador") {
+            linkPanel.style.display = "none";
+            linkRegistro.style.display = "block"; // operador solo registro
+            if (linkUsuarios) linkUsuarios.style.display = "none";
+        } else {
+            linkPanel.style.display = "none";
+            linkRegistro.style.display = "none";
+            linkUsuarios.style.display = "none";
+        }
+    } catch (e) {
+        console.error("Token inválido", e);
+        localStorage.removeItem("token");
+        // Solo ocultar links sensibles
+        linkPanel.style.display = "none";
+        linkRegistro.style.display = "none";
+        linkUsuarios.style.display = "none";
+        linkLogout.style.display = "none";
+        linkLogin.style.display = "block";
     }
+} else {
+    // Usuario no logueado → puede ver index
+    linkLogin.style.display = "block";
+    linkPanel.style.display = "none";
+    linkRegistro.style.display = "none";
+    linkUsuarios.style.display = "none";
+    linkLogout.style.display = "none";
+}
 
-    if (logoutBtn) {
-        logoutBtn.addEventListener("click", e => {
-            e.preventDefault();
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        });
-    }
 
-    const hamburger = document.getElementById("hamburger");
-    const navLinks = document.getElementById("navLinks");
-    hamburger.addEventListener("click", () => navLinks.classList.toggle("show"));
 
-    // FACE API
+    // ---------- FACE API ----------
     const video = document.getElementById("video");
     const canvas = document.getElementById("canvas");
     const resultado = document.getElementById("resultado");
@@ -330,7 +357,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         const resizedDetections = faceapi.resizeResults(deteccion, { width: canvas.width, height: canvas.height });
         const box = resizedDetections.detection.box;
 
-        // ------------------- Enviar a servidor -------------------
         let nombreUsuario = "";
         const headers = { "Content-Type": "application/json" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -372,7 +398,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             sonidoError.play();
         }
 
-        // ------------------- Dibujar en canvas -------------------
         ctx.lineWidth = 3;
         ctx.strokeStyle = `hsl(${Date.now() % 360}, 100%, 50%)`;
         ctx.shadowColor = "#00ffcc";
@@ -381,13 +406,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         ctx.roundRect(box.x, box.y, box.width, box.height, 12);
         ctx.stroke();
 
-        // Nombre sobre la caja
         ctx.font = "20px Arial";
         ctx.fillStyle = "#00ffcc";
         ctx.textAlign = "center";
         ctx.fillText(nombreUsuario, box.x + box.width/2, box.y - 10);
 
-        // Landmarks
         faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
 
         procesando = false;

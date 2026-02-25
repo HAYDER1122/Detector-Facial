@@ -44,8 +44,9 @@ canvas { position:absolute; top:0; left:0; border-radius:10px; pointer-events:no
   <div class="hamburger" id="hamburger"><div></div><div></div><div></div></div>
   <ul class="nav-links" id="navLinks">
     <li id="linkLogin"><a href="login.html">Login</a></li>
-    <li id="linkRegistro" style="display:none;"><a href="index.html">Inicio</a></li>
+    <li id="linkIndex" style="display:none;"><a href="index.html">Inicio</a></li>
     <li id="linkPanel" style="display:none;"><a href="admin.html">Panel</a></li>
+    <li id="linkUsuarios" style="display:none;"><a href="usuarios.html">Usuarios</a></li>
     <li id="linkLogout" style="display:none;"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
   </ul>
 </nav>
@@ -78,27 +79,44 @@ canvas { position:absolute; top:0; left:0; border-radius:10px; pointer-events:no
 
 <script src="/js/face-api.min.js"></script>
 <script>
-// Navbar dinámico y hamburguesa
 const token = localStorage.getItem("token");
+if(!token){
+  window.location.href="login.html";
+}
+
+// Validar rol
+let role = null;
+try{
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  role = payload.role;
+  if(role!=="admin" && role!=="operador") window.location.href="login.html";
+}catch(e){
+  console.error("Token inválido", e);
+  localStorage.removeItem("token");
+  window.location.href="login.html";
+}
+
+// Navbar dinámico
 const linkLogin = document.getElementById("linkLogin");
-const linkRegistro = document.getElementById("linkRegistro");
+const linkIndex = document.getElementById("linkIndex");
 const linkPanel = document.getElementById("linkPanel");
+const linkUsuarios = document.getElementById("linkUsuarios");
 const linkLogout = document.getElementById("linkLogout");
 const logoutBtn = document.getElementById("logoutBtn");
 const hamburger = document.getElementById("hamburger");
 const navLinks = document.getElementById("navLinks");
 
-if(token){
-  linkLogin.style.display="none";
-  linkRegistro.style.display="block";
+linkLogin.style.display="none";
+linkLogout.style.display="block";
+linkIndex.style.display="block"; // ambos roles ven index
+if(role==="admin"){
   linkPanel.style.display="block";
-  linkLogout.style.display="block";
+  linkUsuarios.style.display="block";
 }else{
-  linkLogin.style.display="block";
-  linkRegistro.style.display="none";
   linkPanel.style.display="none";
-  linkLogout.style.display="none";
+  linkUsuarios.style.display="none";
 }
+
 logoutBtn.addEventListener("click", e=>{
   e.preventDefault();
   localStorage.removeItem("token");
@@ -106,14 +124,13 @@ logoutBtn.addEventListener("click", e=>{
 });
 hamburger.addEventListener("click", ()=>navLinks.classList.toggle("show"));
 
-// Variables video & canvas
+// Video & Face API
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const btnRegistrar = document.getElementById("btnRegistrar");
 const mensaje = document.getElementById("mensaje");
 
-// Cargar modelos
 async function cargarModelos(){
   mensaje.innerText="Cargando modelos...";
   await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
@@ -122,7 +139,6 @@ async function cargarModelos(){
   mensaje.innerText="Modelos cargados ✅";
 }
 
-// Activar cámara
 async function activarCamara(){
   try{
     const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
@@ -136,7 +152,6 @@ async function activarCamara(){
   }
 }
 
-// Capturar descriptor
 async function capturarDescriptor(){
   const descriptors=[];
   for(let i=0;i<3;i++){
@@ -149,11 +164,9 @@ async function capturarDescriptor(){
   return descriptors[0].map((_,i)=>descriptors.reduce((sum,d)=>sum+d[i],0)/descriptors.length);
 }
 
-// Dibujo rostro
 function dibujarRostro(nombre="Detectando..."){
   const displaySize={width:video.width,height:video.height};
   faceapi.matchDimensions(canvas,displaySize);
-
   setInterval(async ()=>{
     const deteccion=await faceapi.detectSingleFace(video,new faceapi.TinyFaceDetectorOptions({inputSize:320,scoreThreshold:0.5}))
       .withFaceLandmarks().withFaceDescriptor();
@@ -201,6 +214,7 @@ btnRegistrar.addEventListener("click",async()=>{
   mensaje.innerText=data.msg;
   mensaje.style.color=response.ok?"lightgreen":"red";
 });
+
 document.getElementById("year").textContent=new Date().getFullYear();
 </script>
 </body>
