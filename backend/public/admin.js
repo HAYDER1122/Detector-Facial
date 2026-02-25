@@ -1,4 +1,4 @@
-// admin.js - Panel administrativo optimizado con búsqueda global
+// admin.js - Panel administrativo 
 document.addEventListener("DOMContentLoaded", () => {
 
   const token = localStorage.getItem("token");
@@ -18,30 +18,98 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ---------------- CARGAR PERSONAS ----------------
-  async function cargarPersonas() {
-    try {
-      const res = await fetch("/personas", { headers:{ "Authorization": `Bearer ${token}` } });
-      const personas = await res.json();
-      personasBody.innerHTML = "";
-      personas.forEach(p => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${p.nombre}</td>
-          <td>${p.sede}</td>
-          <td>${p.activo ? "Sí" : "No"}</td>
-          <td><button class="btn btn-sm btn-primary toggleBtn">Toggle</button></td>
-        `;
-        tr.querySelector(".toggleBtn").addEventListener("click", async () => {
-          await fetch(`/personas/${p.id}/toggle`, {
-            method:"POST",
-            headers:{ "Authorization": `Bearer ${token}` }
-          });
-          cargarPersonas();
+async function cargarPersonas() {
+  try {
+    const res = await fetch("/personas", {
+      headers:{ "Authorization": `Bearer ${token}` }
+    });
+
+    if(!res.ok){
+      console.error("Error obteniendo personas");
+      return;
+    }
+
+    const personas = await res.json();
+    personasBody.innerHTML = "";
+
+    personas.forEach(p => {
+      const tr = document.createElement("tr");
+
+      tr.innerHTML = `
+        <td>${p.nombre}</td>
+        <td>${p.sede}</td>
+        <td>${p.activo ? "Sí" : "No"}</td>
+        <td>
+          <button class="btn btn-sm btn-warning editBtn">Editar</button>
+          <button class="btn btn-sm btn-danger deleteBtn">Eliminar</button>
+          <button class="btn btn-sm btn-primary toggleBtn">Toggle</button>
+        </td>
+      `;
+
+      // ---------- EDITAR ----------
+      tr.querySelector(".editBtn").addEventListener("click", async () => {
+        const nuevoNombre = prompt("Editar nombre:", p.nombre);
+        if(nuevoNombre === null) return;
+
+        const nuevaSede = prompt("Editar sede:", p.sede);
+        if(nuevaSede === null) return;
+
+        const updateRes = await fetch(`/personas/${p.id}`, {
+          method:"PUT",
+          headers:{
+            "Content-Type":"application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            nombre: nuevoNombre,
+            sede: nuevaSede
+          })
         });
-        personasBody.appendChild(tr);
+
+        if(updateRes.ok){
+          cargarPersonas();
+        } else {
+          alert("Error al actualizar persona");
+        }
       });
-    } catch(e){ console.error("Error cargando personas:", e); }
+
+      // ---------- ELIMINAR ----------
+      tr.querySelector(".deleteBtn").addEventListener("click", async () => {
+        if(!confirm("¿Eliminar esta persona?")) return;
+
+        const deleteRes = await fetch(`/personas/${p.id}`, {
+          method:"DELETE",
+          headers:{ "Authorization": `Bearer ${token}` }
+        });
+
+        if(deleteRes.ok){
+          cargarPersonas();
+        } else {
+          alert("Error al eliminar persona");
+        }
+      });
+
+      // ---------- TOGGLE ----------
+      tr.querySelector(".toggleBtn").addEventListener("click", async () => {
+        const toggleRes = await fetch(`/personas/${p.id}/toggle`, {
+          method:"POST",
+          headers:{ "Authorization": `Bearer ${token}` }
+        });
+
+        if(toggleRes.ok){
+          cargarPersonas();
+        } else {
+          alert("Error cambiando estado");
+        }
+      });
+
+      personasBody.appendChild(tr);
+    });
+
+  } catch(e){
+    console.error("Error cargando personas:", e);
   }
+}
 
   // ---------------- CARGAR REGISTROS ----------------
   async function cargarRegistros() {

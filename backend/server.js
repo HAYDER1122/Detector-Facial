@@ -15,11 +15,11 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // ----------------- Conexión MySQL -----------------
 const db = mysql.createPool({
-  host: "crossover.proxy.rlwy.net",
-  user: "root",
-  password: "olUAUFxKCdxJxcnjgUcHmccxlNjJgeHR",
-  database: "railway",
-  port: 38474,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
   ssl: { rejectUnauthorized: false },
   waitForConnections: true,
   connectionLimit: 10,
@@ -241,7 +241,60 @@ app.post("/personas/:id/toggle", verificarToken, (req, res) => {
     res.send({ ok: true, msg: "Estado cambiado correctamente" });
   });
 });
+// ----------------- Editar persona -----------------
+app.put("/personas/:id", verificarToken, (req, res) => {
+  if (req.user.role !== "admin")
+    return res.status(403).send({ msg: "No autorizado" });
 
+  const { nombre, sede } = req.body;
+  const { id } = req.params;
+
+  if (!nombre || !sede)
+    return res.status(400).send({ msg: "Datos incompletos" });
+
+  db.query(
+    "UPDATE personas SET nombre=?, sede=? WHERE id=?",
+    [nombre, sede, id],
+    (err, result) => {
+      if (err) {
+        console.error("Error actualizando persona:", err);
+        return res.status(500).send({ msg: "Error BD" });
+      }
+
+      if (result.affectedRows === 0)
+        return res.status(404).send({ msg: "Persona no encontrada" });
+
+      res.send({ ok: true, msg: "Persona actualizada correctamente" });
+    }
+  );
+});
+// ----------------- Eliminar persona -----------------
+app.delete("/personas/:id", verificarToken, (req, res) => {
+  if (req.user.role !== "admin")
+    return res.status(403).send({ msg: "No autorizado" });
+
+  const { id } = req.params;
+
+  // Primero eliminamos descriptores para evitar error de FK
+  db.query("DELETE FROM descriptores WHERE persona_id=?", [id], err => {
+    if (err) {
+      console.error("Error eliminando descriptores:", err);
+      return res.status(500).send({ msg: "Error BD" });
+    }
+
+    db.query("DELETE FROM personas WHERE id=?", [id], (err2, result) => {
+      if (err2) {
+        console.error("Error eliminando persona:", err2);
+        return res.status(500).send({ msg: "Error BD" });
+      }
+
+      if (result.affectedRows === 0)
+        return res.status(404).send({ msg: "Persona no encontrada" });
+
+      res.send({ ok: true, msg: "Persona eliminada correctamente" });
+    });
+  });
+});
 // ----------------- Endpoint asistencias para panel -----------------
 app.get("/asistencias", verificarToken, (req, res) => {
   const { fecha, busqueda } = req.query;
