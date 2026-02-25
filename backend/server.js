@@ -15,25 +15,29 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // CONEXION MYSQL
+const mysql = require("mysql2");
+
 const db = mysql.createPool({
-  host: process.env.DB_HOST || "crossover.proxy.rlwy.net",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "railway",
-  port: Number(process.env.DB_PORT) || 38474,
-  ssl: { rejectUnauthorized: false },
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: Number(process.env.DB_PORT),
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 });
 
 db.getConnection((err, conn) => {
-  if (err) console.error("❌ Error conectando BD:", err);
-  else {
+  if (err) {
+    console.error("❌ Error conectando BD:", err.code);
+  } else {
     console.log("✅ DB conectada");
     conn.release();
   }
 });
+
+module.exports = db.promise();
 
 
 // MIDDLEWARE JWT
