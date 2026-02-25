@@ -6,6 +6,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const path = require("path");
 const ExcelJS = require("exceljs");
+const { URL } = require("url");
 require("dotenv").config();
 
 const app = express();
@@ -14,12 +15,15 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // ----------------- Conexión MySQL -----------------
+// Parsear DATABASE_URL
+const dbUrl = new URL(process.env.DATABASE_URL);
+
 const db = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
+  host: dbUrl.hostname,             // crossover.proxy.rlwy.net
+  user: dbUrl.username,             // root
+  password: dbUrl.password,         // olUAUFxKCdxJxcnjgUcHmccxlNjJgeHR
+  database: dbUrl.pathname.slice(1),// railway
+  port: Number(dbUrl.port),         // 38474
   ssl: { rejectUnauthorized: false },
   waitForConnections: true,
   connectionLimit: 10,
