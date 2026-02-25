@@ -25,7 +25,7 @@ const db = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0
 });
-
+//env arreglado??
 db.getConnection((err, conn) => {
   if (err) console.error("Error conectando BD:", err);
   else {
