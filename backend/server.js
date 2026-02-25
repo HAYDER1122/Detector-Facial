@@ -366,7 +366,7 @@ app.post("/usuarios", verificarToken, soloAdmin, async (req, res) => {
     res.status(500).json({ msg: "Error del servidor" });
   }
 });
-
+//esperando git hub
 // SERVIDOR
 
 
