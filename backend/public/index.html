@@ -284,6 +284,13 @@ if (token) {
     linkLogout.style.display = "none";
 }
 
+// ---------- LOGOUT ----------
+const logoutBtn = document.getElementById("logoutBtn");
+logoutBtn.addEventListener("click", (e) => {
+    e.preventDefault();  // evita que el link "#" recargue la página
+    localStorage.removeItem("token");
+    window.location.href = "login.html";
+});
 
 
     // ---------- FACE API ----------

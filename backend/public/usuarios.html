@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Agregar Usuario - Control Biométrico</title>
+<link rel="icon" href="data:,">
 <style>
 body {
     background:#0b0f17;
@@ -19,9 +20,79 @@ body {
 h1 {
     color:#00ffcc;
     margin-top:30px;
-    text-shadow: 0 0 5px #00ffcc;
+    text-shadow:0 0 5px #00ffcc;
 }
 
+/* ---------------- NAVBAR ---------------- */
+.navbar {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:#111827;
+    padding:15px 25px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.5);
+}
+
+.navbar .brand{
+    font-size:1.4em;
+    font-weight:bold;
+    color:#00ffcc;
+}
+
+.navbar .nav-links{
+    list-style:none;
+    display:flex;
+    gap:25px;
+    margin:0;
+    padding:0;
+}
+
+.navbar .nav-links li a{
+    color:white;
+    text-decoration:none;
+    font-weight:bold;
+    transition:0.3s;
+}
+
+.navbar .nav-links li a:hover{
+    color:#00ffcc;
+}
+
+.hamburger{
+    display:none;
+    flex-direction:column;
+    cursor:pointer;
+    gap:5px;
+}
+
+.hamburger div{
+    width:25px;
+    height:3px;
+    background:white;
+    border-radius:2px;
+}
+
+@media (max-width:768px){
+    .nav-links{
+        display:none;
+        flex-direction:column;
+        position:absolute;
+        top:65px;
+        right:20px;
+        background:#111827;
+        padding:15px;
+        border-radius:8px;
+        box-shadow:0 8px 20px rgba(0,0,0,0.6);
+    }
+    .nav-links.show{
+        display:flex;
+    }
+    .hamburger{
+        display:flex;
+    }
+}
+
+/* ---------------- FORMULARIO ---------------- */
 #formContainer {
     background:#111827;
     max-width:400px;
@@ -42,9 +113,7 @@ input, select {
     color:white;
 }
 
-input::placeholder {
-    color:#aaa;
-}
+input::placeholder { color:#aaa; }
 
 button {
     width:95%;
@@ -60,15 +129,14 @@ button {
     transition:0.3s;
 }
 
-button:hover {
-    background:#00d4aa;
-}
+button:hover { background:#00d4aa; }
 
 #mensaje {
     margin-top:15px;
     font-weight:bold;
 }
 
+/* ---------------- FOOTER ---------------- */
 .footer-custom {
     background:#111827;
     padding:20px 0;
@@ -82,7 +150,7 @@ button:hover {
     color:#00ffcc;
     font-weight:bold;
     letter-spacing:2px;
-    animation: glowFooter 2s ease-in-out infinite alternate;
+    animation:glowFooter 2s ease-in-out infinite alternate;
 }
 
 @keyframes glowFooter {
@@ -92,6 +160,25 @@ button:hover {
 </style>
 </head>
 <body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <div class="brand">Control Biométrico</div>
+
+    <div class="hamburger" id="hamburger">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+
+    <ul class="nav-links" id="navLinks">
+        <li id="linkLogin"><a href="login.html">Login</a></li>
+        <li id="linkPanel"><a href="admin.html">Panel</a></li>
+        <li id="linkRegistro"><a href="registro.html">Registro</a></li>
+        <li id="linkUsuarios"><a href="usuarios.html">Usuarios</a></li>
+        <li id="linkLogout"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
+    </ul>
+</nav>
 
 <h1>Agregar Usuario</h1>
 
@@ -119,40 +206,104 @@ button:hover {
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
 
-const token = localStorage.getItem("token"); // Solo admin puede agregar
+// ---------------- NAVBAR DINÁMICO ----------------
+const token = localStorage.getItem("token");
 
-document.getElementById("btnAgregar").addEventListener("click", async () => {
-    const username = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value;
-    const rol = document.getElementById("rol").value;
-    const activo = document.getElementById("activo").value;
+// Elementos navbar
+const linkLogin = document.getElementById("linkLogin");
+const linkPanel = document.getElementById("linkPanel");
+const linkRegistro = document.getElementById("linkRegistro");
+const linkUsuarios = document.getElementById("linkUsuarios");
+const linkLogout = document.getElementById("linkLogout");
+const logoutBtn = document.getElementById("logoutBtn");
 
-    const mensaje = document.getElementById("mensaje");
-
-    if(!username || !password || !rol){
-        mensaje.innerText = "Completa todos los campos";
-        mensaje.style.color = "red";
-        return;
-    }
+// Mostrar/ocultar links según token y rol
+if(token){
+    linkLogin.style.display = "none";
+    linkLogout.style.display = "block";
 
     try {
-        const res = await fetch("/usuarios", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
-            body: JSON.stringify({ username, password, rol, activo })
-        });
-        const data = await res.json();
-        mensaje.innerText = data.msg;
-        mensaje.style.color = res.ok ? "lightgreen" : "red";
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const role = payload.role;
+
+        if(role==="admin"){
+            linkPanel.style.display = "block";
+            linkRegistro.style.display = "block";
+            linkUsuarios.style.display = "block";
+        } else {
+            // usuario no admin → bloquea todo
+            linkPanel.style.display = "none";
+            linkRegistro.style.display = "none";
+            linkUsuarios.style.display = "none";
+            document.getElementById("formContainer").innerHTML = "<p style='color:red;'>No tienes permiso para acceder a esta página.</p>";
+        }
     } catch(e){
-        mensaje.innerText = "Error de conexión";
-        mensaje.style.color = "red";
-        console.error(e);
+        console.error("Token inválido", e);
+        localStorage.removeItem("token");
+        linkLogin.style.display = "block";
+        linkPanel.style.display = "none";
+        linkRegistro.style.display = "none";
+        linkUsuarios.style.display = "none";
+        linkLogout.style.display = "none";
     }
+} else {
+    // no logueado → bloquea todo
+    linkLogin.style.display = "block";
+    linkPanel.style.display = "none";
+    linkRegistro.style.display = "none";
+    linkUsuarios.style.display = "none";
+    linkLogout.style.display = "none";
+    document.getElementById("formContainer").innerHTML = "<p style='color:red;'>Debes iniciar sesión para acceder.</p>";
+}
+
+// Hamburger toggle
+document.getElementById("hamburger").addEventListener("click", () => {
+    document.getElementById("navLinks").classList.toggle("show");
 });
+
+// Logout funcional
+logoutBtn.addEventListener("click", (e)=>{
+    e.preventDefault();
+    localStorage.removeItem("token");
+    window.location.href = "login.html";
+});
+
+// ---------------- AGREGAR USUARIO ----------------
+const btnAgregar = document.getElementById("btnAgregar");
+if(btnAgregar){
+    btnAgregar.addEventListener("click", async ()=>{
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value;
+        const rol = document.getElementById("rol").value;
+        const activo = document.getElementById("activo").value;
+        const mensaje = document.getElementById("mensaje");
+
+        if(!username || !password || !rol){
+            mensaje.innerText = "Completa todos los campos";
+            mensaje.style.color = "red";
+            return;
+        }
+
+        try {
+            const res = await fetch("/usuarios", {
+                method: "POST",
+                headers: {
+                    "Content-Type":"application/json",
+                    "Authorization":"Bearer "+token
+                },
+                body: JSON.stringify({ username, password, rol, activo })
+            });
+
+            const data = await res.json();
+            mensaje.innerText = data.msg;
+            mensaje.style.color = res.ok ? "lightgreen" : "red";
+        } catch(e){
+            mensaje.innerText = "Error de conexión";
+            mensaje.style.color = "red";
+            console.error(e);
+        }
+    });
+}
 </script>
 
 </body>
