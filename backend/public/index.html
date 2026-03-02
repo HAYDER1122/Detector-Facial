@@ -571,7 +571,7 @@ if (!token) window.location.href = "login.html";
 
 try {
 const payload = JSON.parse(atob(token.split('.')[1]));
-  if (payload.role !== "admin") window.location.href = "index.html"; // o donde quieras redirigir al user
+
 } catch {
 localStorage.removeItem("token");
 window.location.href = "login.html";

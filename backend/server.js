@@ -404,7 +404,7 @@ app.post("/usuarios", verificarToken, soloAdmin, async (req, res) => {
 });
 
 // ----------------- ASISTENCIAS -----------------
-app.get("/asistencias", verificarToken, soloAdminOOperador, (req, res) => {
+app.get("/asistencias", verificarToken, soloAdmin, (req, res) => {
   const { fecha, busqueda,tipo } = req.query;
 
   let sql = `
