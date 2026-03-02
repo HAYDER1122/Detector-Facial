@@ -2,160 +2,338 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Agregar Usuario - Control Biométrico</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agregar Usuario — Control Biométrico</title>
 <link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
 <style>
+:root {
+  --bg: #080c14;
+  --surface: #0f1520;
+  --surface2: #151d2e;
+  --surface3: #1c2740;
+  --border: rgba(0,200,180,0.12);
+  --accent: #00c8b4;
+  --accent-dim: rgba(0,200,180,0.12);
+  --text: #e8edf5;
+  --muted: #5a6a82;
+  --danger: #ef4444;
+  --success: #10b981;
+  --font-mono: 'Space Mono', monospace;
+  --font-body: 'DM Sans', sans-serif;
+  --radius: 14px;
+  --shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
 body {
-    background:#0b0f17;
-    color:white;
-    font-family:Arial, sans-serif;
-    text-align:center;
-    margin:0;
-    padding:0;
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
 }
 
-h1 {
-    color:#00ffcc;
-    margin-top:30px;
-    text-shadow:0 0 5px #00ffcc;
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0;
 }
 
-/* ---------------- NAVBAR ---------------- */
+/* ===== NAVBAR ===== */
 .navbar {
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    background:#111827;
-    padding:15px 25px;
-    box-shadow:0 4px 12px rgba(0,0,0,0.5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
 }
 
-.navbar .brand{
-    font-size:1.4em;
-    font-weight:bold;
-    color:#00ffcc;
+.brand {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  font-size: 0.95rem;
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
 }
 
-.navbar .nav-links{
-    list-style:none;
-    display:flex;
-    gap:25px;
-    margin:0;
-    padding:0;
+.brand-dot {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--accent);
+  animation: pulse 2s ease-in-out infinite;
 }
 
-.navbar .nav-links li a{
-    color:white;
-    text-decoration:none;
-    font-weight:bold;
-    transition:0.3s;
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 4px;
+  align-items: center;
 }
 
-.navbar .nav-links li a:hover{
-    color:#00ffcc;
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.83rem;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 8px;
+  transition: all 0.2s;
 }
 
-.hamburger{
-    display:none;
-    flex-direction:column;
-    cursor:pointer;
-    gap:5px;
+.nav-links a:hover { color: var(--text); background: var(--surface2); }
+.nav-links .danger a { color: var(--danger); }
+.nav-links .danger a:hover { background: rgba(239,68,68,0.1); }
+
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  padding: 4px;
 }
 
-.hamburger div{
-    width:25px;
-    height:3px;
-    background:white;
-    border-radius:2px;
+.hamburger div { width: 22px; height: 2px; background: var(--muted); border-radius: 2px; }
+
+@media (max-width: 680px) {
+  .hamburger { display: flex; }
+  .nav-links {
+    display: none; flex-direction: column; gap: 0;
+    position: absolute; top: 64px; right: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px;
+    min-width: 180px;
+    box-shadow: var(--shadow);
+  }
+  .nav-links.show { display: flex; }
+  .nav-links a { padding: 10px 14px; }
 }
 
-@media (max-width:768px){
-    .nav-links{
-        display:none;
-        flex-direction:column;
-        position:absolute;
-        top:65px;
-        right:20px;
-        background:#111827;
-        padding:15px;
-        border-radius:8px;
-        box-shadow:0 8px 20px rgba(0,0,0,0.6);
-    }
-    .nav-links.show{
-        display:flex;
-    }
-    .hamburger{
-        display:flex;
-    }
+/* ===== MAIN ===== */
+main {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 20px;
+  position: relative;
+  z-index: 1;
 }
 
-/* ---------------- FORMULARIO ---------------- */
-#formContainer {
-    background:#111827;
-    max-width:400px;
-    margin:30px auto;
-    padding:25px;
-    border-radius:12px;
-    box-shadow:0 10px 25px rgba(0,255,204,0.2);
+main::before {
+  content: '';
+  position: fixed;
+  top: 30%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(0,200,180,0.04) 0%, transparent 70%);
+  pointer-events: none;
 }
 
-input, select {
-    width:90%;
-    padding:12px;
-    margin:10px 0;
-    border-radius:8px;
-    border:none;
-    font-size:16px;
-    background:#1e293b;
-    color:white;
+/* ===== CARD ===== */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: fadeUp 0.5s ease both;
 }
 
-input::placeholder { color:#aaa; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
 
-button {
-    width:95%;
-    padding:12px;
-    margin-top:15px;
-    border:none;
-    border-radius:8px;
-    background:#00ffcc;
-    color:#0b0f17;
-    font-weight:bold;
-    font-size:16px;
-    cursor:pointer;
-    transition:0.3s;
+.card-header {
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid var(--border);
 }
 
-button:hover { background:#00d4aa; }
-
-#mensaje {
-    margin-top:15px;
-    font-weight:bold;
+.card-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 3px;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 6px;
 }
 
-/* ---------------- FOOTER ---------------- */
-.footer-custom {
-    background:#111827;
-    padding:20px 0;
-    margin-top:auto;
-    border-top:1px solid rgba(255,255,255,0.08);
-    font-size:0.9em;
-    color:#aaa;
+.card-title {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
-.brand-footer {
-    color:#00ffcc;
-    font-weight:bold;
-    letter-spacing:2px;
-    animation:glowFooter 2s ease-in-out infinite alternate;
+.card-body { padding: 28px; }
+
+/* ===== FIELDS ===== */
+.field { margin-bottom: 18px; }
+
+.field label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 7px;
 }
 
-@keyframes glowFooter {
-    from{ text-shadow:0 0 5px #00ffcc; }
-    to{ text-shadow:0 0 15px #00ffcc; }
+.field input,
+.field select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 11px 15px;
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  appearance: none;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--accent);
+  background: var(--surface3);
+}
+
+.field input::placeholder { color: var(--muted); }
+.field select option { background: var(--surface2); }
+
+.select-wrap { position: relative; }
+.select-wrap::after {
+  content: '▾';
+  position: absolute;
+  right: 14px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+  font-size: 0.8rem;
+}
+
+/* password toggle */
+.input-wrap { position: relative; }
+.input-wrap input { padding-right: 44px; }
+.toggle-pw {
+  position: absolute;
+  right: 12px; top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s;
+  width: auto;
+}
+.toggle-pw:hover { color: var(--accent); }
+
+/* two col grid */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* ===== BUTTON ===== */
+.btn-primary {
+  width: 100%;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 12px;
+  border-radius: 9px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 6px;
+}
+
+.btn-primary:hover:not(:disabled) { background: var(--accent); color: #000; }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ===== STATUS ===== */
+.status-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 15px;
+  border-radius: 9px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 14px;
+}
+
+.status-bar.visible { display: flex; }
+.status-bar.success { border-color: rgba(16,185,129,0.4); color: #34d399; background: rgba(16,185,129,0.07); }
+.status-bar.error   { border-color: rgba(239,68,68,0.4);  color: #f87171; background: rgba(239,68,68,0.07); }
+.status-bar.loading { border-color: rgba(0,200,180,0.4);  color: var(--accent); background: var(--accent-dim); }
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.status-bar.loading .status-dot { animation: pulse 1s infinite; }
+
+/* ===== ACCESO DENEGADO ===== */
+.denied {
+  text-align: center;
+  padding: 40px 28px;
+}
+
+.denied-icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.5; }
+.denied-title { font-family: var(--font-mono); font-size: 0.9rem; color: var(--danger); margin-bottom: 8px; }
+.denied-sub { font-size: 0.83rem; color: var(--muted); }
+
+/* ===== FOOTER ===== */
+footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 18px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  position: relative;
+  z-index: 1;
+}
+
+.footer-brand {
+  color: var(--accent);
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px rgba(0,200,180,0.5);
 }
 </style>
 </head>
@@ -163,149 +341,188 @@ button:hover { background:#00d4aa; }
 
 <!-- NAVBAR -->
 <nav class="navbar">
-    <div class="brand">Control Biométrico</div>
-
-    <div class="hamburger" id="hamburger">
-        <div></div>
-        <div></div>
-        <div></div>
-    </div>
-
-    <ul class="nav-links" id="navLinks">
+  <a class="brand" href="index.html">
+    <div class="brand-dot"></div>
+    CTRL_BIOMÉTRICO
+  </a>
+  <div class="hamburger" id="hamburger"><div></div><div></div><div></div></div>
+  <ul class="nav-links" id="navLinks">
     <li id="linkLogin"><a href="login.html">Login</a></li>
-    <li id="linkUsuarios"><a href="index.html">Inicio</a></li>
-    <li id="linkPanel"><a href="admin.html">Panel</a></li>
-    <li id="linkRegistro"><a href="registro.html">Registrar Personas</a></li>
-    
-    <li id="linkLogout"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
-</ul>
+    <li id="linkIndex" style="display:none"><a href="index.html">Inicio</a></li>
+    <li id="linkPanel" style="display:none"><a href="admin.html">Panel Admin</a></li>
+    <li id="linkRegistro" style="display:none"><a href="registro.html">Registrar</a></li>
+    <li id="linkLogout" class="danger" style="display:none"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
+  </ul>
 </nav>
 
-<h1>Agregar Usuario</h1>
+<!-- MAIN -->
+<main>
+  <div class="card" id="card">
 
-<div id="formContainer">
-    <input type="text" id="username" placeholder="Usuario">
-    <input type="password" id="password" placeholder="Contraseña">
-    <select id="rol">
-        <option value="">Seleccionar rol...</option>
-        <option value="admin">Admin</option>
-        <option value="user">Usuario</option>
-    </select>
-    <select id="activo">
-        <option value="1">Activo</option>
-        <option value="0">Inactivo</option>
-    </select>
-    <button id="btnAgregar">Agregar Usuario</button>
-    <div id="mensaje"></div>
-</div>
+    <div class="card-header">
+      <div class="card-eyebrow">Gestión de accesos</div>
+      <div class="card-title">Agregar Usuario</div>
+    </div>
 
-<footer class="footer-custom">
-    <span>Powered by <span class="brand-footer">HOPD</span></span>
-    <div class="year">© <span id="year"></span> Control Biométrico</div>
+    <div class="card-body" id="cardBody">
+
+      <div class="field">
+        <label>Nombre de usuario</label>
+        <input type="text" id="username" placeholder="Ej: jperez" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label>Contraseña</label>
+        <div class="input-wrap">
+          <input type="password" id="password" placeholder="Mínimo 6 caracteres" />
+          <button class="toggle-pw" id="togglePw" type="button" title="Mostrar/ocultar">👁</button>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label>Rol</label>
+          <div class="select-wrap">
+            <select id="rol">
+              <option value="">Seleccionar…</option>
+              <option value="admin">Admin</option>
+              <option value="user">Usuario</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Estado</label>
+          <div class="select-wrap">
+            <select id="activo">
+              <option value="1">Activo</option>
+              <option value="0">Inactivo</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="btnAgregar">Agregar Usuario</button>
+
+      <div class="status-bar" id="statusBar">
+        <div class="status-dot"></div>
+        <span id="statusTexto"></span>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer>
+  Powered by <span class="footer-brand">HOPD</span> &nbsp;·&nbsp; © <span id="year"></span> Control Biométrico
 </footer>
 
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
 
-// ---------------- NAVBAR DINÁMICO ----------------
+/* ===== STATUS ===== */
+function setStatus(msg, type) {
+  const bar = document.getElementById("statusBar");
+  bar.className = `status-bar visible ${type}`;
+  document.getElementById("statusTexto").textContent = msg;
+}
+
+/* ===== AUTH + NAVBAR ===== */
 const token = localStorage.getItem("token");
 
-// Elementos navbar
-const linkLogin = document.getElementById("linkLogin");
-const linkPanel = document.getElementById("linkPanel");
-const linkRegistro = document.getElementById("linkRegistro");
-const linkUsuarios = document.getElementById("linkUsuarios");
-const linkLogout = document.getElementById("linkLogout");
-const logoutBtn = document.getElementById("logoutBtn");
+document.getElementById("hamburger").addEventListener("click", () =>
+  document.getElementById("navLinks").classList.toggle("show")
+);
 
-// Mostrar/ocultar links según token y rol
-if(token){
-    linkLogin.style.display = "none";
-    linkLogout.style.display = "block";
+document.getElementById("logoutBtn").addEventListener("click", e => {
+  e.preventDefault();
+  localStorage.removeItem("token");
+  window.location.href = "login.html";
+});
 
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const role = payload.role;
+function showDenied(msg) {
+  document.getElementById("cardBody").innerHTML = `
+    <div class="denied">
+      <div class="denied-icon">🔒</div>
+      <div class="denied-title">Acceso restringido</div>
+      <div class="denied-sub">${msg}</div>
+    </div>`;
+}
 
-        if(role==="admin"){
-            linkPanel.style.display = "block";
-            linkRegistro.style.display = "block";
-            linkUsuarios.style.display = "block";
-        } else {
-            // usuario no admin → bloquea todo
-            linkPanel.style.display = "none";
-            linkRegistro.style.display = "none";
-            linkUsuarios.style.display = "none";
-            document.getElementById("formContainer").innerHTML = "<p style='color:red;'>No tienes permiso para acceder a esta página.</p>";
-        }
-    } catch(e){
-        console.error("Token inválido", e);
-        localStorage.removeItem("token");
-        linkLogin.style.display = "block";
-        linkPanel.style.display = "none";
-        linkRegistro.style.display = "none";
-        linkUsuarios.style.display = "none";
-        linkLogout.style.display = "none";
-    }
+if (!token) {
+  showDenied("Debes iniciar sesión para acceder.");
 } else {
-    // no logueado → bloquea todo
-    linkLogin.style.display = "block";
-    linkPanel.style.display = "none";
-    linkRegistro.style.display = "none";
-    linkUsuarios.style.display = "none";
-    linkLogout.style.display = "none";
-    document.getElementById("formContainer").innerHTML = "<p style='color:red;'>Debes iniciar sesión para acceder.</p>";
-}
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const role = payload.role;
 
-// Hamburger toggle
-document.getElementById("hamburger").addEventListener("click", () => {
-    document.getElementById("navLinks").classList.toggle("show");
-});
+    document.getElementById("linkLogin").style.display  = "none";
+    document.getElementById("linkLogout").style.display = "block";
+    document.getElementById("linkIndex").style.display  = "block";
 
-// Logout funcional
-logoutBtn.addEventListener("click", (e)=>{
-    e.preventDefault();
+    if (role === "admin") {
+      document.getElementById("linkPanel").style.display   = "block";
+      document.getElementById("linkRegistro").style.display = "block";
+    } else {
+      showDenied("No tienes permisos para administrar usuarios.");
+    }
+  } catch {
     localStorage.removeItem("token");
-    window.location.href = "login.html";
+    showDenied("Sesión inválida. Por favor inicia sesión de nuevo.");
+  }
+}
+
+/* ===== TOGGLE PASSWORD ===== */
+document.getElementById("togglePw")?.addEventListener("click", () => {
+  const input = document.getElementById("password");
+  input.type = input.type === "password" ? "text" : "password";
 });
 
-// ---------------- AGREGAR USUARIO ----------------
-const btnAgregar = document.getElementById("btnAgregar");
-if(btnAgregar){
-    btnAgregar.addEventListener("click", async ()=>{
-        const username = document.getElementById("username").value.trim();
-        const password = document.getElementById("password").value;
-        const rol = document.getElementById("rol").value;
-        const activo = document.getElementById("activo").value;
-        const mensaje = document.getElementById("mensaje");
+/* ===== AGREGAR USUARIO ===== */
+document.getElementById("btnAgregar")?.addEventListener("click", async () => {
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value;
+  const rol      = document.getElementById("rol").value;
+  const activo   = document.getElementById("activo").value;
 
-        if(!username || !password || !rol){
-            mensaje.innerText = "Completa todos los campos";
-            mensaje.style.color = "red";
-            return;
-        }
+  if (!username || !password || !rol) {
+    setStatus("Completa todos los campos requeridos.", "error");
+    return;
+  }
 
-        try {
-            const res = await fetch("/usuarios", {
-                method: "POST",
-                headers: {
-                    "Content-Type":"application/json",
-                    "Authorization":"Bearer "+token
-                },
-                body: JSON.stringify({ username, password, rol, activo })
-            });
+  if (password.length < 6) {
+    setStatus("La contraseña debe tener al menos 6 caracteres.", "error");
+    return;
+  }
 
-            const data = await res.json();
-            mensaje.innerText = data.msg;
-            mensaje.style.color = res.ok ? "lightgreen" : "red";
-        } catch(e){
-            mensaje.innerText = "Error de conexión";
-            mensaje.style.color = "red";
-            console.error(e);
-        }
+  const btn = document.getElementById("btnAgregar");
+  btn.disabled = true;
+  setStatus("Creando usuario…", "loading");
+
+  try {
+    const res  = await fetch("/usuarios", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ username, password, rol, activo })
     });
-}
-</script>
 
+    const data = await res.json();
+    setStatus(data.msg, res.ok ? "success" : "error");
+
+    if (res.ok) {
+      document.getElementById("username").value = "";
+      document.getElementById("password").value = "";
+      document.getElementById("rol").value      = "";
+    }
+  } catch {
+    setStatus("Error de conexión con el servidor.", "error");
+  }
+
+  btn.disabled = false;
+});
+</script>
 </body>
 </html>
