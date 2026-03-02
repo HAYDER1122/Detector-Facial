@@ -391,7 +391,7 @@ app.get("/asistencias", verificarToken, soloAdminOOperador, (req, res) => {
     sql += " AND (LOWER(p.nombre) LIKE ? OR LOWER(p.sede) LIKE ?)";
     params.push(`%${busqueda.toLowerCase()}%`, `%${busqueda.toLowerCase()}%`);
   }
-  
+
   if (tipo) {
   sql += " AND r.tipo = ?";   // r.tipo viene de la tabla registros
   params.push(tipo);
@@ -429,6 +429,11 @@ app.get("/exportar-registros", verificarToken, soloAdminOOperador, async (req, r
     sql += " AND (LOWER(p.nombre) LIKE ? OR LOWER(p.sede) LIKE ?)";
     params.push(`%${busqueda.toLowerCase()}%`, `%${busqueda.toLowerCase()}%`);
   }
+
+  if (tipo) {
+  sql += " AND r.tipo = ?";
+  params.push(tipo);
+}
 
   sql += " ORDER BY r.fecha_hora DESC";
 
