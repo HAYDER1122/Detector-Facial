@@ -479,85 +479,85 @@ footer {
 
 <!-- NAVBAR -->
 <nav class="navbar">
-  <a class="brand" href="index.html">
+<a class="brand" href="index.html">
     <div class="brand-dot"></div>
-    CTRL_BIOMÉTRICO
-  </a>
-  <div class="hamburger" id="hamburger"><div></div><div></div><div></div></div>
-  <ul class="nav-links" id="navLinks">
+    CONTROL BIOMÉTRICO
+</a>
+<div class="hamburger" id="hamburger"><div></div><div></div><div></div></div>
+<ul class="nav-links" id="navLinks">
     <li id="linkLogin"><a href="login.html">Login</a></li>
     <li id="linkPanel"    style="display:none"><a href="admin.html">Panel Admin</a></li>
     <li id="linkRegistro" style="display:none"><a href="registro.html">Registrar</a></li>
     <li id="linkUsuarios" style="display:none"><a href="usuarios.html">Usuarios</a></li>
     <li id="linkLogout"   class="danger" style="display:none"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
-  </ul>
+</ul>
 </nav>
 
 <!-- MAIN -->
 <main>
 
-  <!-- Header -->
-  <div class="page-header">
+<!-- Header -->
+<div class="page-header">
     <div class="page-eyebrow">Sistema de Reconocimiento Facial</div>
     <div class="page-title">Control Biométrico</div>
-  </div>
+</div>
 
-  <!-- Action selector -->
-  <div class="action-row">
+<!-- Action selector -->
+<div class="action-row">
     <span class="action-label">Acción</span>
     <div class="select-wrap">
-      <select id="tipoRegistro">
+    <select id="tipoRegistro">
         <option value="">Seleccionar acción…</option>
         <option value="entrada">Entrada</option>
         <option value="salida">Salida</option>
         <option value="descanso">Salida descanso</option>
         <option value="entrada_descanso">Entrada descanso</option>
-      </select>
+    </select>
     </div>
-  </div>
+</div>
 
-  <!-- Video card -->
-  <div class="video-card">
+<!-- Video card -->
+<div class="video-card">
     <div class="video-card-header">
-      <div class="vc-title">Cámara en vivo</div>
-      <div class="cam-badge inactive" id="camBadge">INACTIVA</div>
+    <div class="vc-title">Cámara en vivo</div>
+    <div class="cam-badge inactive" id="camBadge">INACTIVA</div>
     </div>
 
     <div class="video-wrap" id="videoWrap">
-      <div class="scanline"></div>
-      <div class="corner corner-tl"></div>
-      <div class="corner corner-tr"></div>
-      <div class="corner corner-bl"></div>
-      <div class="corner corner-br"></div>
+    <div class="scanline"></div>
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
 
-      <!-- idle state -->
-      <div class="idle-overlay" id="idleOverlay">
+    <!-- idle state -->
+    <div class="idle-overlay" id="idleOverlay">
         <div class="idle-icon">👁</div>
         <div class="idle-text">Selecciona una acción para activar</div>
-      </div>
+    </div>
 
-      <video id="video" autoplay muted playsinline></video>
-      <canvas id="canvas"></canvas>
+    <video id="video" autoplay muted playsinline></video>
+    <canvas id="canvas"></canvas>
     </div>
 
     <div class="status-bar" id="statusBar">
-      <div class="status-dot"></div>
-      <div class="status-text" id="statusText">Esperando acción…</div>
+    <div class="status-dot"></div>
+    <div class="status-text" id="statusText">Esperando acción…</div>
     </div>
-  </div>
+</div>
 
 </main>
 
 <!-- OVERLAY FULLSCREEN -->
 <div class="overlay-full" id="overlayFull">
-  <div class="overlay-icon" id="overlayIcon">✅</div>
-  <div class="overlay-greeting" id="overlayGreeting">—</div>
-  <div class="overlay-sub" id="overlaySub">REGISTRO EXITOSO</div>
-  <div class="overlay-progress"><div class="overlay-progress-bar" id="overlayBar"></div></div>
+<div class="overlay-icon" id="overlayIcon">✅</div>
+<div class="overlay-greeting" id="overlayGreeting">—</div>
+<div class="overlay-sub" id="overlaySub">REGISTRO EXITOSO</div>
+<div class="overlay-progress"><div class="overlay-progress-bar" id="overlayBar"></div></div>
 </div>
 
 <footer>
-  Powered by <span class="footer-brand">HOPD</span> &nbsp;·&nbsp; © <span id="year"></span> Control Biométrico
+Powered by <span class="footer-brand">HOPD</span> &nbsp;·&nbsp; © <span id="year"></span> Control Biométrico
 </footer>
 
 <script src="/js/face-api.min.js"></script>
@@ -568,31 +568,31 @@ document.addEventListener("DOMContentLoaded", async () => {
 const token = localStorage.getItem("token");
 
 document.getElementById("hamburger").addEventListener("click", () =>
-  document.getElementById("navLinks").classList.toggle("show")
+document.getElementById("navLinks").classList.toggle("show")
 );
 
 document.getElementById("logoutBtn").addEventListener("click", e => {
-  e.preventDefault();
-  localStorage.removeItem("token");
-  window.location.href = "login.html";
+e.preventDefault();
+localStorage.removeItem("token");
+window.location.href = "login.html";
 });
 
 if (token) {
-  document.getElementById("linkLogin").style.display   = "none";
-  document.getElementById("linkLogout").style.display  = "block";
-  try {
+document.getElementById("linkLogin").style.display   = "none";
+document.getElementById("linkLogout").style.display  = "block";
+try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     const role = payload.role;
     if (role === "admin") {
-      document.getElementById("linkPanel").style.display    = "block";
-      document.getElementById("linkRegistro").style.display = "block";
-      document.getElementById("linkUsuarios").style.display = "block";
+        document.getElementById("linkPanel").style.display    = "block";
+        document.getElementById("linkRegistro").style.display = "block";
+        document.getElementById("linkUsuarios").style.display = "block";
     } else if (role === "user") {
-      document.getElementById("linkRegistro").style.display = "block";
+        document.getElementById("linkRegistro").style.display = "block";
     }
-  } catch {
+} catch {
     localStorage.removeItem("token");
-  }
+}
 }
 
 /* ===== ELEMENTS ===== */
@@ -619,8 +619,8 @@ const sonidoError = new Audio("https://actions.google.com/sounds/v1/cartoon/cart
 
 /* ===== STATUS HELPER ===== */
 function setStatus(msg, type = "") {
-  statusBar.className = `status-bar ${type}`;
-  statusText.textContent = msg;
+    statusBar.className = `status-bar ${type}`;
+    statusText.textContent = msg;
 }
 
 /* ===== FACE API ===== */
@@ -632,153 +632,153 @@ setStatus("Modelos cargados. Selecciona una acción.", "ok");
 
 /* ===== CAMARA ===== */
 function activarCamara() {
-  if (intervalDetect) clearInterval(intervalDetect);
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+    if (intervalDetect) clearInterval(intervalDetect);
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
     .then(stream => {
-      video.srcObject = stream;
-      video.onloadedmetadata = () => {
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
         canvas.width  = video.videoWidth;
         canvas.height = video.videoHeight;
-      };
-      camBadge.textContent = "EN VIVO";
-      camBadge.classList.remove("inactive");
-      videoWrap.classList.add("active");
-      idleOverlay.classList.add("hidden");
-      setStatus("Cámara activa — buscando rostro…", "loading");
-      intervalDetect = setInterval(detectar, 200);
-    })
+    };
+        camBadge.textContent = "EN VIVO";
+        camBadge.classList.remove("inactive");
+        videoWrap.classList.add("active");
+        idleOverlay.classList.add("hidden");
+        setStatus("Cámara activa — buscando rostro…", "loading");
+        intervalDetect = setInterval(detectar, 200);
+        })
     .catch(() => setStatus("No se pudo acceder a la cámara.", "error"));
 }
 
 function cerrarCamara() {
-  if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
-  video.srcObject = null;
-  if (intervalDetect) clearInterval(intervalDetect);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  camBadge.textContent = "INACTIVA";
-  camBadge.classList.add("inactive");
-  videoWrap.classList.remove("active");
-  idleOverlay.classList.remove("hidden");
+if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+video.srcObject = null;
+if (intervalDetect) clearInterval(intervalDetect);
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+camBadge.textContent = "INACTIVA";
+camBadge.classList.add("inactive");
+videoWrap.classList.remove("active");
+idleOverlay.classList.remove("hidden");
 }
 
 selectTipo.addEventListener("change", () => {
-  tipoSeleccionado = selectTipo.value;
-  if (!tipoSeleccionado) {
-    cerrarCamara();
-    setStatus("Esperando acción…");
+tipoSeleccionado = selectTipo.value;
+    if (!tipoSeleccionado) {
+        cerrarCamara();
+        setStatus("Esperando acción…");
     return;
-  }
-  activarCamara();
+}
+activarCamara();
 });
 
 /* ===== OVERLAY ===== */
 function showOverlay(nombre, ok) {
-  const hora = new Date().getHours();
-  const saludo = hora < 12 ? "¡Buenos días" : (hora < 19 ? "¡Buenas tardes" : "¡Buenas noches");
+const hora = new Date().getHours();
+const saludo = hora < 12 ? "¡Buenos días" : (hora < 19 ? "¡Buenas tardes" : "¡Buenas noches");
 
-  overlayFull.classList.remove("overlay-error");
-  overlayFull.classList.add("visible");
+overlayFull.classList.remove("overlay-error");
+overlayFull.classList.add("visible");
 
-  if (ok) {
+if (ok) {
     overlayIcon.textContent    = "✅";
     overlayGreeting.textContent = `${saludo}, ${nombre}`;
     overlaySub.textContent     = "REGISTRO EXITOSO";
-  } else {
+} else {
     overlayFull.classList.add("overlay-error");
     overlayIcon.textContent    = "❌";
     overlayGreeting.textContent = nombre;
     overlaySub.textContent     = "NO RECONOCIDO";
-  }
+}
 
   // reset animation
-  const bar = document.getElementById("overlayBar");
-  bar.style.animation = "none";
+const bar = document.getElementById("overlayBar");
+bar.style.animation = "none";
   bar.offsetHeight; // reflow
-  bar.style.animation = "";
+bar.style.animation = "";
 
-  setTimeout(() => {
+    setTimeout(() => {
     overlayFull.classList.remove("visible");
     if (ok) {
-      tipoSeleccionado = "";
-      selectTipo.value = "";
-      cerrarCamara();
-      setStatus("Esperando acción…");
+    tipoSeleccionado = "";
+    selectTipo.value = "";
+    cerrarCamara();
+    setStatus("Esperando acción…");
     }
-  }, 3000);
+}, 3000);
 }
 
 /* ===== DETECTAR ===== */
 async function detectar() {
-  if (!tipoSeleccionado || procesando) return;
-  procesando = true;
+if (!tipoSeleccionado || procesando) return;
+procesando = true;
 
-  const det = await faceapi
+const det = await faceapi
     .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
     .withFaceLandmarks()
     .withFaceDescriptor();
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  if (!det) {
+if (!det) {
     setStatus("Buscando rostro… acércate a la cámara.", "loading");
     procesando = false;
     return;
-  }
+}
 
-  const resized = faceapi.resizeResults(det, { width: canvas.width, height: canvas.height });
-  const box = resized.detection.box;
+const resized = faceapi.resizeResults(det, { width: canvas.width, height: canvas.height });
+const box = resized.detection.box;
 
-  const headers = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+const headers = { "Content-Type": "application/json" };
+if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  let nombre = "";
+let nombre = "";
 
-  try {
+try {
     setStatus("Rostro detectado — verificando identidad…", "loading");
 
     const res  = await fetch("/reconocer", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ descriptor: Array.from(det.descriptor), tipo: tipoSeleccionado })
+    method: "POST",
+    headers,
+    body: JSON.stringify({ descriptor: Array.from(det.descriptor), tipo: tipoSeleccionado })
     });
     const data = await res.json();
 
     if (res.ok && data.ok) {
-      nombre = data.nombre || "Usuario";
-      sonidoOK.play().catch(()=>{});
-      setStatus(`✓ ${nombre} registrado correctamente`, "ok");
-      showOverlay(nombre, true);
+    nombre = data.nombre || "Usuario";
+    sonidoOK.play().catch(()=>{});
+    setStatus(`✓ ${nombre} registrado correctamente`, "ok");
+    showOverlay(nombre, true);
     } else {
-      nombre = "No reconocido";
-      sonidoError.play().catch(()=>{});
-      setStatus(data.mensaje || "Usuario no reconocido en el sistema.", "error");
-      showOverlay(data.mensaje || "Usuario no reconocido", false);
+    nombre = "No reconocido";
+    sonidoError.play().catch(()=>{});
+    setStatus(data.mensaje || "Usuario no reconocido en el sistema.", "error");
+    showOverlay(data.mensaje || "Usuario no reconocido", false);
     }
-  } catch {
+} catch {
     nombre = "Error";
     sonidoError.play().catch(()=>{});
     setStatus("Error de conexión con el servidor.", "error");
-  }
+}
 
   /* draw bounding box */
-  ctx.strokeStyle = "#00c8b4";
-  ctx.lineWidth   = 2;
-  ctx.shadowColor = "#00c8b4";
-  ctx.shadowBlur  = 14;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(box.x, box.y, box.width, box.height, 8);
-  else ctx.rect(box.x, box.y, box.width, box.height);
-  ctx.stroke();
-  ctx.shadowBlur = 0;
+ctx.strokeStyle = "#00c8b4";
+ctx.lineWidth   = 2;
+ctx.shadowColor = "#00c8b4";
+ctx.shadowBlur  = 14;
+ctx.beginPath();
+if (ctx.roundRect) ctx.roundRect(box.x, box.y, box.width, box.height, 8);
+else ctx.rect(box.x, box.y, box.width, box.height);
+ctx.stroke();
+ctx.shadowBlur = 0;
 
-  ctx.font      = "13px 'Space Mono', monospace";
-  ctx.fillStyle = "#00c8b4";
-  ctx.textAlign = "center";
-  ctx.fillText(nombre, box.x + box.width / 2, box.y - 8);
+ctx.font      = "13px 'Space Mono', monospace";
+ctx.fillStyle = "#00c8b4";
+ctx.textAlign = "center";
+ctx.fillText(nombre, box.x + box.width / 2, box.y - 8);
 
-  faceapi.draw.drawFaceLandmarks(canvas, resized);
+faceapi.draw.drawFaceLandmarks(canvas, resized);
 
-  procesando = false;
+procesando = false;
 }
 
 document.getElementById("year").textContent = new Date().getFullYear();
