@@ -147,7 +147,7 @@ app.post("/crear-usuario", verificarToken, soloAdmin, async (req, res) => {
 });
 
 app.get("/usuarios", verificarToken, soloAdmin, (req, res) => {
-  db.query("SELECT id, username, rol activo FROM usuarios", (err, rows) => {
+  db.query("SELECT id, username, rol , activo FROM usuarios", (err, rows) => {
     if (err) return res.status(500).send([]);
     res.send(rows);
   });
