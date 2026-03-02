@@ -410,7 +410,7 @@ app.get("/asistencias", verificarToken, soloAdminOOperador, (req, res) => {
 
 // ----------------- EXPORTAR EXCEL -----------------
 app.get("/exportar-registros", verificarToken, soloAdminOOperador, async (req, res) => {
-  const { fecha, busqueda } = req.query;
+  const { fecha, busqueda,tipo } = req.query;
 
   let sql = `
     SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha

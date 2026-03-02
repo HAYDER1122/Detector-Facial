@@ -721,9 +721,10 @@ document.getElementById("exportExcel").addEventListener("click", async () => {
     const params = new URLSearchParams();
     const fecha = document.getElementById("fechaFiltro").value;
     const busq  = document.getElementById("busquedaGeneral").value;
+    const tipo  = document.getElementById("tipoFiltro").value;
     if (fecha) params.append("fecha", fecha);
     if (busq)  params.append("busqueda", busq);
-
+    if (tipo)  params.append("tipo", tipo);
     const res = await fetch("/asistencias?" + params, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
 
