@@ -331,9 +331,9 @@ footer {
 }
 
 .footer-brand {
-  color: var(--accent);
-  letter-spacing: 3px;
-  text-shadow: 0 0 10px rgba(0,200,180,0.5);
+color: var(--accent);
+letter-spacing: 3px;
+text-shadow: 0 0 10px rgba(0,200,180,0.5);
 }
 </style>
 </head>
@@ -341,80 +341,80 @@ footer {
 
 <!-- NAVBAR -->
 <nav class="navbar">
-  <a class="brand" href="index.html">
+<a class="brand" href="index.html">
     <div class="brand-dot"></div>
     CTRL_BIOMÉTRICO
-  </a>
-  <div class="hamburger" id="hamburger"><div></div><div></div><div></div></div>
-  <ul class="nav-links" id="navLinks">
+</a>
+<div class="hamburger" id="hamburger"><div></div><div></div><div></div></div>
+<ul class="nav-links" id="navLinks">
     <li id="linkLogin"><a href="login.html">Login</a></li>
     <li id="linkIndex" style="display:none"><a href="index.html">Inicio</a></li>
     <li id="linkPanel" style="display:none"><a href="admin.html">Panel Admin</a></li>
     <li id="linkRegistro" style="display:none"><a href="registro.html">Registrar</a></li>
     <li id="linkLogout" class="danger" style="display:none"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
-  </ul>
+</ul>
 </nav>
 
 <!-- MAIN -->
 <main>
-  <div class="card" id="card">
+<div class="card" id="card">
 
     <div class="card-header">
-      <div class="card-eyebrow">Gestión de accesos</div>
-      <div class="card-title">Agregar Usuario</div>
+    <div class="card-eyebrow">Gestión de accesos</div>
+    <div class="card-title">Agregar Usuario</div>
     </div>
 
     <div class="card-body" id="cardBody">
 
-      <div class="field">
+    <div class="field">
         <label>Nombre de usuario</label>
         <input type="text" id="username" placeholder="Ej: jperez" autocomplete="off" />
-      </div>
+    </div>
 
-      <div class="field">
+    <div class="field">
         <label>Contraseña</label>
         <div class="input-wrap">
-          <input type="password" id="password" placeholder="Mínimo 6 caracteres" />
-          <button class="toggle-pw" id="togglePw" type="button" title="Mostrar/ocultar">👁</button>
+        <input type="password" id="password" placeholder="Mínimo 6 caracteres" />
+        <button class="toggle-pw" id="togglePw" type="button" title="Mostrar/ocultar">👁</button>
         </div>
-      </div>
+    </div>
 
-      <div class="grid-2">
+    <div class="grid-2">
         <div class="field">
-          <label>Rol</label>
-          <div class="select-wrap">
+        <label>Rol</label>
+        <div class="select-wrap">
             <select id="rol">
-              <option value="">Seleccionar…</option>
-              <option value="admin">Admin</option>
-              <option value="user">Usuario</option>
+                <option value="">Seleccionar…</option>
+                <option value="admin">Admin</option>
+                <option value="user">Usuario</option>
             </select>
-          </div>
+        </div>
         </div>
 
         <div class="field">
-          <label>Estado</label>
-          <div class="select-wrap">
+        <label>Estado</label>
+        <div class="select-wrap">
             <select id="activo">
-              <option value="1">Activo</option>
-              <option value="0">Inactivo</option>
+                <option value="1">Activo</option>
+                <option value="0">Inactivo</option>
             </select>
-          </div>
         </div>
-      </div>
+        </div>
+    </div>
 
-      <button class="btn-primary" id="btnAgregar">Agregar Usuario</button>
+    <button class="btn-primary" id="btnAgregar">Agregar Usuario</button>
 
-      <div class="status-bar" id="statusBar">
+    <div class="status-bar" id="statusBar">
         <div class="status-dot"></div>
         <span id="statusTexto"></span>
-      </div>
+    </div>
 
     </div>
-  </div>
+</div>
 </main>
 
 <footer>
-  Powered by <span class="footer-brand">HOPD</span> &nbsp;·&nbsp; © <span id="year"></span> Control Biométrico
+Powered by <span class="footer-brand">HOPD</span> &nbsp;·&nbsp; © <span id="year"></span> Control Biométrico
 </footer>
 
 <script>
@@ -422,37 +422,37 @@ document.getElementById("year").textContent = new Date().getFullYear();
 
 /* ===== STATUS ===== */
 function setStatus(msg, type) {
-  const bar = document.getElementById("statusBar");
-  bar.className = `status-bar visible ${type}`;
-  document.getElementById("statusTexto").textContent = msg;
+const bar = document.getElementById("statusBar");
+bar.className = `status-bar visible ${type}`;
+document.getElementById("statusTexto").textContent = msg;
 }
 
 /* ===== AUTH + NAVBAR ===== */
 const token = localStorage.getItem("token");
 
 document.getElementById("hamburger").addEventListener("click", () =>
-  document.getElementById("navLinks").classList.toggle("show")
+document.getElementById("navLinks").classList.toggle("show")
 );
 
 document.getElementById("logoutBtn").addEventListener("click", e => {
-  e.preventDefault();
-  localStorage.removeItem("token");
-  window.location.href = "login.html";
+e.preventDefault();
+localStorage.removeItem("token");
+window.location.href = "login.html";
 });
 
 function showDenied(msg) {
-  document.getElementById("cardBody").innerHTML = `
+document.getElementById("cardBody").innerHTML = `
     <div class="denied">
-      <div class="denied-icon">🔒</div>
-      <div class="denied-title">Acceso restringido</div>
-      <div class="denied-sub">${msg}</div>
+    <div class="denied-icon">🔒</div>
+    <div class="denied-title">Acceso restringido</div>
+    <div class="denied-sub">${msg}</div>
     </div>`;
 }
 
 if (!token) {
-  showDenied("Debes iniciar sesión para acceder.");
+showDenied("Debes iniciar sesión para acceder.");
 } else {
-  try {
+try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     const role = payload.role;
 
@@ -461,67 +461,67 @@ if (!token) {
     document.getElementById("linkIndex").style.display  = "block";
 
     if (role === "admin") {
-      document.getElementById("linkPanel").style.display   = "block";
-      document.getElementById("linkRegistro").style.display = "block";
+    document.getElementById("linkPanel").style.display   = "block";
+    document.getElementById("linkRegistro").style.display = "block";
     } else {
-      showDenied("No tienes permisos para administrar usuarios.");
+    showDenied("No tienes permisos para administrar usuarios.");
     }
-  } catch {
+} catch {
     localStorage.removeItem("token");
     showDenied("Sesión inválida. Por favor inicia sesión de nuevo.");
-  }
+}
 }
 
 /* ===== TOGGLE PASSWORD ===== */
 document.getElementById("togglePw")?.addEventListener("click", () => {
-  const input = document.getElementById("password");
-  input.type = input.type === "password" ? "text" : "password";
+const input = document.getElementById("password");
+input.type = input.type === "password" ? "text" : "password";
 });
 
 /* ===== AGREGAR USUARIO ===== */
 document.getElementById("btnAgregar")?.addEventListener("click", async () => {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value;
-  const rol      = document.getElementById("rol").value;
-  const activo   = document.getElementById("activo").value;
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+    const rol      = document.getElementById("rol").value;
+    const activo   = document.getElementById("activo").value;
 
-  if (!username || !password || !rol) {
+    if (!username || !password || !rol) {
     setStatus("Completa todos los campos requeridos.", "error");
     return;
-  }
+}
 
-  if (password.length < 6) {
+if (password.length < 6) {
     setStatus("La contraseña debe tener al menos 6 caracteres.", "error");
     return;
-  }
+}
 
-  const btn = document.getElementById("btnAgregar");
-  btn.disabled = true;
-  setStatus("Creando usuario…", "loading");
+    const btn = document.getElementById("btnAgregar");
+    btn.disabled = true;
+    setStatus("Creando usuario…", "loading");
 
-  try {
+    try {
     const res  = await fetch("/usuarios", {
-      method: "POST",
-      headers: {
+    method: "POST",
+    headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ username, password, rol, activo })
+    },
+    body: JSON.stringify({ username, password, rol, activo })
     });
 
     const data = await res.json();
     setStatus(data.msg, res.ok ? "success" : "error");
 
     if (res.ok) {
-      document.getElementById("username").value = "";
-      document.getElementById("password").value = "";
-      document.getElementById("rol").value      = "";
+    document.getElementById("username").value = "";
+    document.getElementById("password").value = "";
+    document.getElementById("rol").value      = "";
     }
-  } catch {
+} catch {
     setStatus("Error de conexión con el servidor.", "error");
-  }
+}
 
-  btn.disabled = false;
+btn.disabled = false;
 });
 </script>
 </body>
