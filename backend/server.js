@@ -106,6 +106,10 @@ app.post("/login", (req, res) => {
     if (!match)
       return res.status(400).send({ msg: "Contraseña incorrecta" });
 
+    // verificar que el usuario esté activo
+    if (!user.activo)
+      return res.status(403).send({ msg: "Usuario desactivado. Contacta al administrador." });
+
     const token = jwt.sign(
       { id: user.id, role: user.rol },
       process.env.JWT_SECRET || "clave_secreta",
