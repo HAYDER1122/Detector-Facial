@@ -372,7 +372,7 @@ app.post("/usuarios", verificarToken, soloAdmin, async (req, res) => {
 
 // ----------------- ASISTENCIAS -----------------
 app.get("/asistencias", verificarToken, soloAdminOOperador, (req, res) => {
-  const { fecha, busqueda } = req.query;
+  const { fecha, busqueda,tipo } = req.query;
 
   let sql = `
     SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
@@ -391,7 +391,12 @@ app.get("/asistencias", verificarToken, soloAdminOOperador, (req, res) => {
     sql += " AND (LOWER(p.nombre) LIKE ? OR LOWER(p.sede) LIKE ?)";
     params.push(`%${busqueda.toLowerCase()}%`, `%${busqueda.toLowerCase()}%`);
   }
-
+  
+  if (tipo) {
+  sql += " AND r.tipo = ?";   // r.tipo viene de la tabla registros
+  params.push(tipo);
+}
+  
   sql += " ORDER BY r.fecha_hora DESC LIMIT 500";
 
   db.query(sql, params, (err, rows) => {
