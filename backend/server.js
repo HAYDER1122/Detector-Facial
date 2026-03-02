@@ -152,7 +152,36 @@ app.get("/usuarios", verificarToken, soloAdmin, (req, res) => {
     res.send(rows);
   });
 });
+app.put("/usuarios/:id", verificarToken, soloAdmin, async (req, res) => {
+  const { username, rol, password } = req.body;
+  if (!username || !rol) return res.status(400).json({ msg: "Datos incompletos" });
 
+  let sql = "UPDATE usuarios SET username=?, rol=? WHERE id=?";
+  let params = [username, rol, req.params.id];
+
+  if (password) {
+    const hash = await bcrypt.hash(password, 10);
+    sql = "UPDATE usuarios SET username=?, rol=?, password=? WHERE id=?";
+    params = [username, rol, hash, req.params.id];
+  }
+
+  db.query(sql, params, err => {
+    if (err) return res.status(500).json({ msg: "Error actualizando" });
+    res.json({ ok: true });
+  });
+});
+app.delete("/usuarios/:id", verificarToken, soloAdmin, (req, res) => {
+  db.query("DELETE FROM usuarios WHERE id=?", [req.params.id], err => {
+    if (err) return res.status(500).json({ ok: false });
+    res.json({ ok: true });
+  });
+});
+app.post("/usuarios/:id/toggle", verificarToken, soloAdmin, (req, res) => {
+  db.query("UPDATE usuarios SET activo = NOT activo WHERE id=?", [req.params.id], err => {
+    if (err) return res.status(500).json({ ok: false });
+    res.json({ ok: true });
+  });
+});
 
 // REGISTRAR PERSONA
 

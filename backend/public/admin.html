@@ -10,7 +10,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
-/* ===== VARIABLES ===== */
 :root {
   --bg: #080c14;
   --surface: #0f1520;
@@ -44,7 +43,6 @@ body {
   overflow-x: hidden;
 }
 
-/* ===== NOISE OVERLAY ===== */
 body::before {
   content: '';
   position: fixed;
@@ -54,7 +52,6 @@ body::before {
   z-index: 0;
 }
 
-/* ===== NAVBAR ===== */
 .navbar-custom {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -84,10 +81,7 @@ body::before {
   animation: pulse 2s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0%,100% { opacity:1; transform:scale(1); }
-  50% { opacity:0.5; transform:scale(0.8); }
-}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
 
 .nav-link {
   color: var(--muted) !important;
@@ -103,10 +97,8 @@ body::before {
 .nav-link.danger { color: var(--salida) !important; }
 .nav-link.danger:hover { background: rgba(239,68,68,0.1) !important; }
 
-/* ===== MAIN ===== */
 .main-content { flex: 1; padding: 32px 24px; position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; width: 100%; }
 
-/* ===== PAGE HEADER ===== */
 .page-header {
   display: flex;
   align-items: flex-end;
@@ -116,22 +108,10 @@ body::before {
   gap: 16px;
 }
 
-.page-title {
-  font-family: var(--font-mono);
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--text);
-}
-
+.page-title { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 700; color: var(--text); }
 .page-title span { color: var(--accent); }
+.page-subtitle { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
 
-.page-subtitle {
-  color: var(--muted);
-  font-size: 0.85rem;
-  margin-top: 4px;
-}
-
-/* ===== STAT CARDS ===== */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -161,26 +141,10 @@ body::before {
   opacity: 0.7;
 }
 
-.stat-label {
-  font-size: 0.72rem;
-  color: var(--muted);
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  font-family: var(--font-mono);
-}
-
-.stat-value {
-  font-size: 2rem;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--card-color, var(--accent));
-  line-height: 1;
-  margin: 8px 0 4px;
-}
-
+.stat-label { font-size: 0.72rem; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; font-family: var(--font-mono); }
+.stat-value { font-size: 2rem; font-weight: 700; font-family: var(--font-mono); color: var(--card-color, var(--accent)); line-height: 1; margin: 8px 0 4px; }
 .stat-sub { font-size: 0.78rem; color: var(--muted); }
 
-/* ===== PANELS ===== */
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -211,22 +175,9 @@ body::before {
   gap: 8px;
 }
 
-.panel-title::before {
-  content: '';
-  width: 6px; height: 6px;
-  background: var(--accent);
-  border-radius: 50%;
-}
+.panel-title::before { content: ''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
 
-.panel-body { padding: 20px; }
-
-/* ===== FILTERS ===== */
-.filters-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
-}
+.filters-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
 .form-control-dark {
   background: var(--surface2);
@@ -243,10 +194,9 @@ body::before {
 
 .form-control-dark:focus { border-color: var(--accent); background: var(--surface3); color: var(--text); }
 .form-control-dark::placeholder { color: var(--muted); }
+.form-control-dark option { background: var(--surface2); }
 
-/* ===== TABLE ===== */
 .table-wrap { overflow-x: auto; max-height: 380px; overflow-y: auto; }
-
 .table-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
 .table-wrap::-webkit-scrollbar-track { background: transparent; }
 .table-wrap::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 4px; }
@@ -284,12 +234,25 @@ tbody td { padding: 11px 16px; color: var(--text); }
   font-weight: 700;
 }
 
-.badge-entrada  { background: rgba(0,102,255,0.15); color: #60a5fa; border: 1px solid rgba(0,102,255,0.3); }
-.badge-salida   { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
-.badge-descanso_salida { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+.badge-entrada        { background: rgba(0,102,255,0.15);  color: #60a5fa; border: 1px solid rgba(0,102,255,0.3); }
+.badge-salida         { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.badge-descanso_salida  { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
 .badge-descanso_entrada { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
 
-/* ===== BUTTONS ===== */
+/* Rol badges */
+.badge-rol {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.badge-rol-admin { background: rgba(0,200,180,0.15); color: var(--accent); border: 1px solid rgba(0,200,180,0.3); }
+.badge-rol-user  { background: rgba(90,106,130,0.2);  color: #94a3b8;      border: 1px solid rgba(90,106,130,0.3); }
+
 .btn-accent {
   background: var(--accent-dim);
   border: 1px solid var(--accent);
@@ -323,24 +286,14 @@ tbody td { padding: 11px 16px; color: var(--text); }
 .btn-toggle { background: rgba(0,200,180,0.1);  border-color: rgba(0,200,180,0.4);  color: var(--accent); }
 .btn-toggle:hover { background: rgba(0,200,180,0.25); }
 
-/* ===== CHART AREA ===== */
 .chart-area { padding: 20px; height: 240px; }
 
-/* ===== EMPTY STATE ===== */
-.empty-state {
-  text-align: center;
-  padding: 40px;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
+.empty-state { text-align: center; padding: 40px; color: var(--muted); font-size: 0.85rem; }
 .empty-state .icon { font-size: 2rem; margin-bottom: 10px; opacity: 0.4; }
 
-/* ===== TOAST ===== */
 .toast-container {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: 24px; right: 24px;
   z-index: 9999;
   display: flex;
   flex-direction: column;
@@ -363,29 +316,12 @@ tbody td { padding: 11px 16px; color: var(--text); }
 @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes fadeUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
-/* ===== MODAL ===== */
-.modal-dark .modal-content {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
-}
+.modal-dark .modal-content { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); }
+.modal-dark .modal-header  { border-bottom: 1px solid var(--border); padding: 16px 20px; }
+.modal-dark .modal-title   { font-family: var(--font-mono); font-size: 0.9rem; color: var(--accent); }
+.modal-dark .btn-close     { filter: invert(1) opacity(0.5); }
+.modal-dark .modal-footer  { border-top: 1px solid var(--border); }
 
-.modal-dark .modal-header {
-  border-bottom: 1px solid var(--border);
-  padding: 16px 20px;
-}
-
-.modal-dark .modal-title {
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  color: var(--accent);
-}
-
-.modal-dark .btn-close { filter: invert(1) opacity(0.5); }
-.modal-dark .modal-footer { border-top: 1px solid var(--border); }
-
-/* ===== FOOTER ===== */
 footer {
   background: var(--surface);
   border-top: 1px solid var(--border);
@@ -398,23 +334,10 @@ footer {
   z-index: 1;
 }
 
-.footer-brand {
-  color: var(--accent);
-  letter-spacing: 3px;
-  text-shadow: 0 0 10px rgba(0,200,180,0.5);
-}
+.footer-brand { color: var(--accent); letter-spacing: 3px; text-shadow: 0 0 10px rgba(0,200,180,0.5); }
 
-/* ===== SEARCH HIGHLIGHT ===== */
-.hl { background: rgba(0,200,180,0.2); border-radius: 2px; }
-
-/* ===== ACTIVE BADGE ===== */
-.status-dot {
-  display: inline-block;
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  margin-right: 5px;
-}
-.status-active { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
+.status-active   { background: #10b981; box-shadow: 0 0 6px #10b981; }
 .status-inactive { background: var(--muted); }
 </style>
 </head>
@@ -431,7 +354,6 @@ footer {
     <ul class="navbar-nav ms-auto d-flex flex-row gap-1 align-items-center">
       <li class="nav-item"><a class="nav-link" href="index.html">Inicio</a></li>
       <li class="nav-item"><a class="nav-link" href="registro.html">Registrar</a></li>
-      <li class="nav-item"><a class="nav-link" href="usuarios.html">Usuarios</a></li>
       <li class="nav-item"><a class="nav-link danger" href="#" id="logoutBtn">Salir</a></li>
     </ul>
   </div>
@@ -450,23 +372,23 @@ footer {
   </div>
 
   <!-- STAT CARDS -->
-  <div class="stats-grid" id="statsGrid">
-    <div class="stat-card" style="--card-color:#60a5fa" style="animation-delay:0s">
+  <div class="stats-grid">
+    <div class="stat-card" style="--card-color:#60a5fa">
       <div class="stat-label">Entradas hoy</div>
       <div class="stat-value" id="statEntrada">—</div>
       <div class="stat-sub">registros de entrada</div>
     </div>
-    <div class="stat-card" style="--card-color:#f87171" style="animation-delay:0.1s">
+    <div class="stat-card" style="--card-color:#f87171">
       <div class="stat-label">Salidas hoy</div>
       <div class="stat-value" id="statSalida">—</div>
       <div class="stat-sub">registros de salida</div>
     </div>
-    <div class="stat-card" style="--card-color:#fbbf24" style="animation-delay:0.2s">
+    <div class="stat-card" style="--card-color:#fbbf24">
       <div class="stat-label">Descansos</div>
       <div class="stat-value" id="statDescanso">—</div>
       <div class="stat-sub">salidas + entradas</div>
     </div>
-    <div class="stat-card" style="--card-color:#34d399" style="animation-delay:0.3s">
+    <div class="stat-card" style="--card-color:#34d399">
       <div class="stat-label">Personas activas</div>
       <div class="stat-value" id="statPersonas">—</div>
       <div class="stat-sub">total en sistema</div>
@@ -492,12 +414,7 @@ footer {
     <div class="table-wrap">
       <table>
         <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Sede</th>
-            <th>Tipo</th>
-            <th>Fecha / Hora</th>
-          </tr>
+          <tr><th>Nombre</th><th>Sede</th><th>Tipo</th><th>Fecha / Hora</th></tr>
         </thead>
         <tbody id="registrosBody"></tbody>
       </table>
@@ -530,21 +447,39 @@ footer {
     <div class="table-wrap">
       <table>
         <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Sede</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-          </tr>
+          <tr><th>Nombre</th><th>Sede</th><th>Estado</th><th>Acciones</th></tr>
         </thead>
         <tbody id="personasBody"></tbody>
       </table>
     </div>
   </div>
 
+  <!-- USUARIOS PANEL (solo admin) -->
+  <div class="panel" id="panelUsuarios" style="display:none">
+    <div class="panel-header">
+      <div class="panel-title">Usuarios del Sistema</div>
+      <div class="filters-row">
+        <input type="text" id="busquedaUsuarios" placeholder="Buscar usuario…" class="form-control-dark" />
+        <select id="filtroRol" class="form-control-dark" style="min-width:130px">
+          <option value="">Todos los roles</option>
+          <option value="admin">Admin</option>
+          <option value="user">Usuario</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr>
+        </thead>
+        <tbody id="usuariosBody"></tbody>
+      </table>
+    </div>
+  </div>
+
 </main>
 
-<!-- MODAL EDITAR -->
+<!-- MODAL EDITAR PERSONA -->
 <div class="modal fade modal-dark" id="editModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -570,6 +505,39 @@ footer {
   </div>
 </div>
 
+<!-- MODAL EDITAR USUARIO -->
+<div class="modal fade modal-dark" id="editUserModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Editar Usuario</div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-3">
+          <label style="font-size:0.78rem;color:var(--muted);font-family:var(--font-mono)">NOMBRE DE USUARIO</label>
+          <input type="text" id="editUserNombre" class="form-control-dark w-100 mt-1" />
+        </div>
+        <div class="mb-3">
+          <label style="font-size:0.78rem;color:var(--muted);font-family:var(--font-mono)">ROL</label>
+          <select id="editUserRol" class="form-control-dark w-100 mt-1">
+            <option value="admin">Admin</option>
+            <option value="user">Usuario</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.78rem;color:var(--muted);font-family:var(--font-mono)">NUEVA CONTRASEÑA <span style="color:var(--muted);font-size:0.65rem">(dejar vacío para no cambiar)</span></label>
+          <input type="password" id="editUserPassword" class="form-control-dark w-100 mt-1" placeholder="Mínimo 6 caracteres" />
+        </div>
+      </div>
+      <div class="modal-footer p-3 gap-2">
+        <button class="btn-accent" id="editUserConfirm">Guardar cambios</button>
+        <button type="button" style="background:none;border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:8px;font-size:0.82rem;cursor:pointer" data-bs-dismiss="modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST CONTAINER -->
 <div class="toast-container" id="toastContainer"></div>
 
@@ -584,8 +552,17 @@ if (!localStorage.getItem("token")) window.location.href = "login.html";
 
 const token = localStorage.getItem("token");
 let chart;
-let editingId = null;
-let allPersonas = [];
+let editingId     = null;
+let editingUserId = null;
+let allPersonas   = [];
+let allUsuarios   = [];
+
+/* ===== ROLE CHECK ===== */
+let currentRole = "user";
+try {
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  currentRole = payload.role;
+} catch {}
 
 /* ===== DATETIME ===== */
 function updateClock() {
@@ -621,7 +598,7 @@ document.getElementById("logoutBtn").addEventListener("click", e => {
   window.location.href = "login.html";
 });
 
-/* ===== LOAD REGISTROS ===== */
+/* ===== REGISTROS ===== */
 async function cargarRegistros() {
   const params = new URLSearchParams();
   const fecha = document.getElementById("fechaFiltro").value;
@@ -637,9 +614,7 @@ async function cargarRegistros() {
     renderRegistros(data);
     actualizarStats(data);
     actualizarGrafico(data);
-  } catch {
-    toast("Error al cargar registros", "#f87171");
-  }
+  } catch { toast("Error al cargar registros", "#f87171"); }
 }
 
 function renderRegistros(data) {
@@ -662,7 +637,6 @@ function formatTipo(t) {
   return { entrada:"ENTRADA", salida:"SALIDA", descanso_salida:"DESC. SAL.", descanso_entrada:"DESC. ENT." }[t] || t.toUpperCase();
 }
 
-/* ===== STATS ===== */
 function actualizarStats(data) {
   const hoy = new Date().toDateString();
   const hoyData = data.filter(r => new Date(r.fecha).toDateString() === hoy);
@@ -671,13 +645,12 @@ function actualizarStats(data) {
   document.getElementById("statDescanso").textContent = hoyData.filter(r=>r.tipo.startsWith("descanso")).length;
 }
 
-/* ===== GRÁFICO ===== */
 function actualizarGrafico(data) {
-  const ctx = document.getElementById("graficoAsistencias").getContext("2d");
-  const tipos   = ["entrada","salida","descanso_salida","descanso_entrada"];
-  const labels  = ["Entrada","Salida","Desc. Salida","Desc. Entrada"];
-  const counts  = tipos.map(t => data.filter(r=>r.tipo===t).length);
-  const colors  = ["#3b82f6","#ef4444","#f59e0b","#10b981"];
+  const ctx    = document.getElementById("graficoAsistencias").getContext("2d");
+  const tipos  = ["entrada","salida","descanso_salida","descanso_entrada"];
+  const labels = ["Entrada","Salida","Desc. Salida","Desc. Entrada"];
+  const counts = tipos.map(t => data.filter(r=>r.tipo===t).length);
+  const colors = ["#3b82f6","#ef4444","#f59e0b","#10b981"];
 
   if (chart) chart.destroy();
   chart = new Chart(ctx, {
@@ -698,24 +671,17 @@ function actualizarGrafico(data) {
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: {
-          backgroundColor: "#0f1520",
-          borderColor: "rgba(0,200,180,0.2)",
-          borderWidth: 1,
-          titleColor: "#00c8b4",
-          bodyColor: "#e8edf5",
-          padding: 10,
-        }
+        tooltip: { backgroundColor:"#0f1520", borderColor:"rgba(0,200,180,0.2)", borderWidth:1, titleColor:"#00c8b4", bodyColor:"#e8edf5", padding:10 }
       },
       scales: {
-        x: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#5a6a82", font: { family: "'Space Mono'" } } },
-        y: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#5a6a82", stepSize: 1 }, beginAtZero: true }
+        x: { grid:{ color:"rgba(255,255,255,0.04)" }, ticks:{ color:"#5a6a82", font:{ family:"'Space Mono'" } } },
+        y: { grid:{ color:"rgba(255,255,255,0.04)" }, ticks:{ color:"#5a6a82", stepSize:1 }, beginAtZero:true }
       }
     }
   });
 }
 
-/* ===== EXPORTAR EXCEL (cliente) ===== */
+/* ===== EXPORTAR EXCEL ===== */
 document.getElementById("exportExcel").addEventListener("click", async () => {
   try {
     const params = new URLSearchParams();
@@ -725,7 +691,8 @@ document.getElementById("exportExcel").addEventListener("click", async () => {
     if (fecha) params.append("fecha", fecha);
     if (busq)  params.append("busqueda", busq);
     if (tipo)  params.append("tipo", tipo);
-    const res = await fetch("/asistencias?" + params, { headers: { Authorization: `Bearer ${token}` } });
+
+    const res  = await fetch("/asistencias?" + params, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
 
     if (!data.length) { toast("Sin datos para exportar", "#f59e0b"); return; }
@@ -743,15 +710,7 @@ document.getElementById("exportExcel").addEventListener("click", async () => {
     XLSX.writeFile(wb, `asistencias_${new Date().toISOString().split("T")[0]}.xlsx`);
     toast("✓ Excel exportado correctamente");
   } catch {
-    /* fallback to server */
-    const res = await fetch("/exportar-registros", { headers: { Authorization: `Bearer ${token}` } });
-    if (res.ok) {
-      const blob = await res.blob();
-      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "registros.xlsx" });
-      document.body.appendChild(a); a.click(); a.remove();
-    } else {
-      toast("Error al exportar", "#f87171");
-    }
+    toast("Error al exportar", "#f87171");
   }
 });
 
@@ -762,9 +721,7 @@ async function cargarPersonas() {
     allPersonas = await res.json();
     document.getElementById("statPersonas").textContent = allPersonas.filter(p=>p.activo).length;
     renderPersonas();
-  } catch {
-    toast("Error al cargar personas", "#f87171");
-  }
+  } catch { toast("Error al cargar personas", "#f87171"); }
 }
 
 function renderPersonas() {
@@ -773,7 +730,7 @@ function renderPersonas() {
   const tbody   = document.getElementById("personasBody");
 
   let lista = allPersonas;
-  if (busq)    lista = lista.filter(p => p.nombre.toLowerCase().includes(busq) || p.sede.toLowerCase().includes(busq));
+  if (busq)        lista = lista.filter(p => p.nombre.toLowerCase().includes(busq) || p.sede.toLowerCase().includes(busq));
   if (filtroA !== "") lista = lista.filter(p => String(p.activo ? 1 : 0) === filtroA);
 
   if (!lista.length) {
@@ -812,7 +769,7 @@ function renderPersonas() {
     btn.addEventListener("click", async () => {
       if (!confirm("¿Eliminar esta persona?")) return;
       const id = +btn.closest("tr").dataset.id;
-      await fetch(`/personas/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      await fetch(`/personas/${id}`, { method:"DELETE", headers:{ Authorization:`Bearer ${token}` } });
       toast("Persona eliminada", "#f87171");
       cargarPersonas();
     });
@@ -821,14 +778,13 @@ function renderPersonas() {
   tbody.querySelectorAll(".toggleBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const id = +btn.closest("tr").dataset.id;
-      await fetch(`/personas/${id}/toggle`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      await fetch(`/personas/${id}/toggle`, { method:"POST", headers:{ Authorization:`Bearer ${token}` } });
       toast("Estado actualizado");
       cargarPersonas();
     });
   });
 }
 
-/* MODAL EDIT CONFIRM */
 document.getElementById("editConfirm").addEventListener("click", async () => {
   const nombre = document.getElementById("editNombre").value.trim();
   const sede   = document.getElementById("editSede").value.trim();
@@ -843,17 +799,120 @@ document.getElementById("editConfirm").addEventListener("click", async () => {
   cargarPersonas();
 });
 
+/* ===== USUARIOS ===== */
+async function cargarUsuarios() {
+  try {
+    const res = await fetch("/usuarios", { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return; // sin permisos
+    allUsuarios = await res.json();
+    renderUsuarios();
+    document.getElementById("panelUsuarios").style.display = "block";
+  } catch { /* no admin, no panel */ }
+}
+
+function renderUsuarios() {
+  const busq    = document.getElementById("busquedaUsuarios").value.toLowerCase();
+  const filtroR = document.getElementById("filtroRol").value;
+  const tbody   = document.getElementById("usuariosBody");
+
+  let lista = allUsuarios;
+  if (busq)        lista = lista.filter(u => u.username.toLowerCase().includes(busq));
+  if (filtroR !== "") lista = lista.filter(u => u.rol === filtroR);
+
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="icon">🔑</div>Sin usuarios encontrados</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = lista.map(u => `
+    <tr data-id="${u.id}">
+      <td style="font-weight:500;font-family:var(--font-mono);font-size:0.85rem">${u.username}</td>
+      <td><span class="badge-rol badge-rol-${u.rol}">${u.rol.toUpperCase()}</span></td>
+      <td>
+        <span class="status-dot ${u.activo ? 'status-active' : 'status-inactive'}"></span>
+        <span style="font-size:0.8rem;color:${u.activo?'#34d399':'var(--muted)'}">${u.activo ? "Activo" : "Inactivo"}</span>
+      </td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-sm-action btn-edit editUserBtn">Editar</button>
+        <button class="btn-sm-action btn-del deleteUserBtn">Eliminar</button>
+        <button class="btn-sm-action btn-toggle toggleUserBtn">${u.activo ? "Desactivar" : "Activar"}</button>
+      </td>
+    </tr>
+  `).join("");
+
+  tbody.querySelectorAll(".editUserBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = +btn.closest("tr").dataset.id;
+      const u  = allUsuarios.find(x => x.id === id);
+      document.getElementById("editUserNombre").value   = u.username;
+      document.getElementById("editUserRol").value      = u.rol;
+      document.getElementById("editUserPassword").value = "";
+      editingUserId = id;
+      new bootstrap.Modal(document.getElementById("editUserModal")).show();
+    });
+  });
+
+  tbody.querySelectorAll(".deleteUserBtn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("¿Eliminar este usuario? Esta acción no se puede deshacer.")) return;
+      const id = +btn.closest("tr").dataset.id;
+      const res = await fetch(`/usuarios/${id}`, { method:"DELETE", headers:{ Authorization:`Bearer ${token}` } });
+      if (res.ok) { toast("Usuario eliminado", "#f87171"); cargarUsuarios(); }
+      else        { toast("Error al eliminar", "#f87171"); }
+    });
+  });
+
+  tbody.querySelectorAll(".toggleUserBtn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = +btn.closest("tr").dataset.id;
+      const res = await fetch(`/usuarios/${id}/toggle`, { method:"POST", headers:{ Authorization:`Bearer ${token}` } });
+      if (res.ok) { toast("Estado de usuario actualizado"); cargarUsuarios(); }
+      else        { toast("Error al actualizar estado", "#f87171"); }
+    });
+  });
+}
+
+document.getElementById("editUserConfirm").addEventListener("click", async () => {
+  const username = document.getElementById("editUserNombre").value.trim();
+  const rol      = document.getElementById("editUserRol").value;
+  const password = document.getElementById("editUserPassword").value;
+
+  if (!username || !rol) { toast("Completa los campos requeridos", "#f59e0b"); return; }
+  if (password && password.length < 6) { toast("La contraseña debe tener al menos 6 caracteres", "#f59e0b"); return; }
+
+  const body = { username, rol };
+  if (password) body.password = password;
+
+  const res = await fetch(`/usuarios/${editingUserId}`, {
+    method: "PUT",
+    headers: { "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+    body: JSON.stringify(body)
+  });
+
+  if (res.ok) {
+    bootstrap.Modal.getInstance(document.getElementById("editUserModal")).hide();
+    toast("✓ Usuario actualizado");
+    cargarUsuarios();
+  } else {
+    const data = await res.json();
+    toast(data.msg || "Error al actualizar", "#f87171");
+  }
+});
+
 /* ===== EVENTOS ===== */
 document.getElementById("fechaFiltro").addEventListener("input", cargarRegistros);
 document.getElementById("tipoFiltro").addEventListener("change", cargarRegistros);
 document.getElementById("busquedaGeneral").addEventListener("input", debounce(cargarRegistros, 300));
 document.getElementById("busquedaPersonas").addEventListener("input", debounce(renderPersonas, 250));
 document.getElementById("filtroActivo").addEventListener("change", renderPersonas);
+document.getElementById("busquedaUsuarios").addEventListener("input", debounce(renderUsuarios, 250));
+document.getElementById("filtroRol").addEventListener("change", renderUsuarios);
 
 /* ===== INIT ===== */
 window.addEventListener("load", () => {
   cargarRegistros();
   cargarPersonas();
+  if (currentRole === "admin") cargarUsuarios();
 });
 </script>
 </body>
