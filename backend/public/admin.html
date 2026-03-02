@@ -824,21 +824,26 @@ function renderUsuarios() {
     return;
   }
 
-  tbody.innerHTML = lista.map(u => `
+tbody.innerHTML = lista.map(u => {
+  const activo = u.activo == 1; // ← doble igual para aceptar tanto 1 como true
+  return `
     <tr data-id="${u.id}">
       <td style="font-weight:500;font-family:var(--font-mono);font-size:0.85rem">${u.username}</td>
       <td><span class="badge-rol badge-rol-${u.rol}">${u.rol.toUpperCase()}</span></td>
       <td>
-        <span class="status-dot ${u.activo ? 'status-active' : 'status-inactive'}"></span>
-        <span style="font-size:0.8rem;color:${u.activo?'#34d399':'var(--muted)'}">${u.activo ? "Activo" : "Inactivo"}</span>
+        <span class="status-dot ${activo ? 'status-active' : 'status-inactive'}"></span>
+        <span style="font-size:0.8rem;color:${activo ? '#34d399' : 'var(--muted)'}">
+          ${activo ? "Activo" : "Inactivo"}
+        </span>
       </td>
       <td style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn-sm-action btn-edit editUserBtn">Editar</button>
         <button class="btn-sm-action btn-del deleteUserBtn">Eliminar</button>
-        <button class="btn-sm-action btn-toggle toggleUserBtn">${u.activo ? "Desactivar" : "Activar"}</button>
+        <button class="btn-sm-action btn-toggle toggleUserBtn">${activo ? "Desactivar" : "Activar"}</button>
       </td>
     </tr>
-  `).join("");
+  `;
+}).join("");
 
   tbody.querySelectorAll(".editUserBtn").forEach(btn => {
     btn.addEventListener("click", () => {
