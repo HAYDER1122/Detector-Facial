@@ -2,439 +2,858 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Control Biométrico Facial</title>
-<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Administrativo — Control Biométrico</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
+/* ===== VARIABLES ===== */
+:root {
+  --bg: #080c14;
+  --surface: #0f1520;
+  --surface2: #151d2e;
+  --surface3: #1c2740;
+  --border: rgba(0,200,180,0.12);
+  --accent: #00c8b4;
+  --accent2: #0066ff;
+  --accent-dim: rgba(0,200,180,0.15);
+  --text: #e8edf5;
+  --muted: #5a6a82;
+  --entrada: #0066ff;
+  --salida: #ef4444;
+  --desc-sal: #f59e0b;
+  --desc-ent: #10b981;
+  --font-mono: 'Space Mono', monospace;
+  --font-body: 'DM Sans', sans-serif;
+  --radius: 12px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
 body {
-    background:#0b0f17;
-    color:white;
-    font-family:Arial, sans-serif;
-    text-align:center;
-    margin:0;
-    padding:0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
 }
 
-h1{
-    margin-top:20px;
-    color:#00ffcc;
+/* ===== NOISE OVERLAY ===== */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
 }
 
-#panel {
-    background:#111827;
-    width:90%;
-    max-width:800px;
-    margin:20px auto;
-    padding:20px;
-    border-radius:12px;
-    box-shadow:0 10px 25px rgba(0,0,0,0.5);
-    flex:1;
+/* ===== NAVBAR ===== */
+.navbar-custom {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 64px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
 }
 
-video {
-    border-radius:10px;
-    border:2px solid #00ffcc;
-    max-width:100%;
-    display:block;
-    margin:0 auto;
+.navbar-brand {
+  font-family: var(--font-mono);
+  color: var(--accent) !important;
+  font-size: 1rem;
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-canvas {
-    position:absolute;
-    top:0;
-    left:0;
+.brand-dot {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--accent);
+  animation: pulse 2s ease-in-out infinite;
 }
 
-select {
-    padding:12px;
-    margin:15px 0;
-    border-radius:8px;
-    border:none;
-    font-size:14px;
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50% { opacity:0.5; transform:scale(0.8); }
 }
 
-/* Estados */
-.estado-ok{color:#00ffcc;}
-.estado-error{color:red;}
-.estado-esperando{color:#aaa;}
-
-/* ---------------- NAVBAR ---------------- */
-.navbar {
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    background:#111827;
-    padding:15px 25px;
-    box-shadow:0 4px 12px rgba(0,0,0,0.5);
+.nav-link {
+  color: var(--muted) !important;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 6px 14px !important;
+  border-radius: 8px;
+  transition: all 0.2s;
 }
 
-.navbar .brand{
-    font-size:1.4em;
-    font-weight:bold;
-    color:#00ffcc;
+.nav-link:hover { color: var(--text) !important; background: var(--surface2); }
+.nav-link.danger { color: var(--salida) !important; }
+.nav-link.danger:hover { background: rgba(239,68,68,0.1) !important; }
+
+/* ===== MAIN ===== */
+.main-content { flex: 1; padding: 32px 24px; position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; width: 100%; }
+
+/* ===== PAGE HEADER ===== */
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
-.navbar .nav-links{
-    list-style:none;
-    display:flex;
-    gap:25px;
-    margin:0;
-    padding:0;
+.page-title {
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
-.navbar .nav-links li a{
-    color:white;
-    text-decoration:none;
-    font-weight:bold;
-    transition:0.3s;
+.page-title span { color: var(--accent); }
+
+.page-subtitle {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 4px;
 }
 
-.navbar .nav-links li a:hover{
-    color:#00ffcc;
+/* ===== STAT CARDS ===== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
 }
 
-/* Hamburguesa */
-.hamburger{
-    display:none;
-    flex-direction:column;
-    cursor:pointer;
-    gap:5px;
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s, transform 0.2s;
+  animation: fadeUp 0.5s ease both;
 }
 
-.hamburger div{
-    width:25px;
-    height:3px;
-    background:white;
-    border-radius:2px;
+.stat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--card-color, var(--accent));
+  opacity: 0.7;
 }
 
-/* Responsive */
-@media (max-width:768px){
-    .nav-links{
-    display:none;
-    flex-direction:column;
-    position:absolute;
-    top:65px;
-    right:20px;
-    background:#111827;
-    padding:15px;
-    border-radius:8px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.6);
+.stat-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
 }
 
-.nav-links.show{
-    display:flex;
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--card-color, var(--accent));
+  line-height: 1;
+  margin: 8px 0 4px;
 }
 
-.hamburger{
-    display:flex;
-}
+.stat-sub { font-size: 0.78rem; color: var(--muted); }
+
+/* ===== PANELS ===== */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 24px;
+  animation: fadeUp 0.5s ease both;
 }
 
-/* ---------------- FOOTER ---------------- */
-.footer-custom {
-    background: #111827;
-    padding: 25px 0;
-    border-top: 1px solid rgba(255,255,255,0.08);
-    margin-top: auto;
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.footer-content {
-    text-align: center;
-    font-size: 0.9em;
-    color: #aaa;
+.panel-title {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.powered {
-    margin-right: 6px;
+.panel-title::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
 }
 
-.brand-footer {
-    color: #00ffcc;
-    font-weight: bold;
-    letter-spacing: 2px;
-    animation: glowFooter 2s ease-in-out infinite alternate;
+.panel-body { padding: 20px; }
+
+/* ===== FILTERS ===== */
+.filters-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
-.year {
-    margin-top: 8px;
-    font-size: 0.8em;
-    color: #666;
+.form-control-dark {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 0.2s;
+  min-width: 160px;
 }
 
-/* Glow elegante */
-@keyframes glowFooter {
-    from { text-shadow: 0 0 5px #00ffcc; }
-    to   { text-shadow: 0 0 15px #00ffcc; }
+.form-control-dark:focus { border-color: var(--accent); background: var(--surface3); color: var(--text); }
+.form-control-dark::placeholder { color: var(--muted); }
+
+/* ===== TABLE ===== */
+.table-wrap { overflow-x: auto; max-height: 380px; overflow-y: auto; }
+
+.table-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
+.table-wrap::-webkit-scrollbar-track { background: transparent; }
+.table-wrap::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 4px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+
+thead th {
+  background: var(--surface2);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 12px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
 }
+
+tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+tbody tr:hover { background: var(--surface2); }
+tbody td { padding: 11px 16px; color: var(--text); }
+
+.badge-tipo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+  font-weight: 700;
+}
+
+.badge-entrada  { background: rgba(0,102,255,0.15); color: #60a5fa; border: 1px solid rgba(0,102,255,0.3); }
+.badge-salida   { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.badge-descanso_salida { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+.badge-descanso_entrada { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+
+/* ===== BUTTONS ===== */
+.btn-accent {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.btn-accent:hover { background: var(--accent); color: #000; }
+
+.btn-sm-action {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.btn-edit   { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.4); color: #fbbf24; }
+.btn-edit:hover { background: rgba(245,158,11,0.25); }
+.btn-del    { background: rgba(239,68,68,0.1);  border-color: rgba(239,68,68,0.4);  color: #f87171; }
+.btn-del:hover  { background: rgba(239,68,68,0.25); }
+.btn-toggle { background: rgba(0,200,180,0.1);  border-color: rgba(0,200,180,0.4);  color: var(--accent); }
+.btn-toggle:hover { background: rgba(0,200,180,0.25); }
+
+/* ===== CHART AREA ===== */
+.chart-area { padding: 20px; height: 240px; }
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.empty-state .icon { font-size: 2rem; margin-bottom: 10px; opacity: 0.4; }
+
+/* ===== TOAST ===== */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  animation: slideIn 0.3s ease;
+  max-width: 280px;
+}
+
+@keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes fadeUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== MODAL ===== */
+.modal-dark .modal-content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+
+.modal-dark .modal-header {
+  border-bottom: 1px solid var(--border);
+  padding: 16px 20px;
+}
+
+.modal-dark .modal-title {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--accent);
+}
+
+.modal-dark .btn-close { filter: invert(1) opacity(0.5); }
+.modal-dark .modal-footer { border-top: 1px solid var(--border); }
+
+/* ===== FOOTER ===== */
+footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 20px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  position: relative;
+  z-index: 1;
+}
+
+.footer-brand {
+  color: var(--accent);
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px rgba(0,200,180,0.5);
+}
+
+/* ===== SEARCH HIGHLIGHT ===== */
+.hl { background: rgba(0,200,180,0.2); border-radius: 2px; }
+
+/* ===== ACTIVE BADGE ===== */
+.status-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.status-active { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.status-inactive { background: var(--muted); }
 </style>
 </head>
 
 <body>
 
-<h1>CONTROL BIOMÉTRICO</h1>
-
 <!-- NAVBAR -->
-<nav class="navbar">
-    <div class="brand">Control Biométrico</div>
-
-    <div class="hamburger" id="hamburger">
-        <div></div>
-        <div></div>
-        <div></div>
-    </div>
-
-    <ul class="nav-links" id="navLinks">
-        <li id="linkLogin"><a href="login.html">Login</a></li>
-        <li id="linkPanel" style="display:none;"><a href="admin.html">Panel Administrativo</a></li>
-        <li id="linkRegistro" style="display:none;"><a href="registro.html">Registrar Personas</a></li>
-        <li id="linkUsuarios" style="display:none;"><a href="usuarios.html">Registrar Usuarios</a></li>
-        <li id="linkLogout" style="display:none;"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
+<nav class="navbar navbar-expand-lg navbar-custom">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="index.html">
+      <div class="brand-dot"></div>
+      CTRL_BIOMÉTRICO
+    </a>
+    <ul class="navbar-nav ms-auto d-flex flex-row gap-1 align-items-center">
+      <li class="nav-item"><a class="nav-link" href="index.html">Inicio</a></li>
+      <li class="nav-item"><a class="nav-link" href="registro.html">Registrar</a></li>
+      <li class="nav-item"><a class="nav-link" href="usuarios.html">Usuarios</a></li>
+      <li class="nav-item"><a class="nav-link danger" href="#" id="logoutBtn">Salir</a></li>
     </ul>
+  </div>
 </nav>
 
-<div id="panel">
-<select id="tipoRegistro">
-    <option value="">Seleccionar acción...</option>
-    <option value="entrada">Entrada</option>
-    <option value="salida">Salida</option>
-    <option value="descanso">Salida descanso</option>
-    <option value="entrada_descanso">Entrada descanso</option>
-</select>
+<!-- MAIN -->
+<main class="main-content">
 
-<div style="position:relative; display:inline-block;">
-    <video id="video" width="720" height="560" autoplay muted playsinline></video>
-    <canvas id="canvas" width="720" height="560"></canvas>
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">Panel <span>Administrativo</span></div>
+      <div class="page-subtitle" id="currentDateTime">—</div>
+    </div>
+    <button class="btn-accent" id="exportExcel">⬇ Exportar Excel</button>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card" style="--card-color:#60a5fa" style="animation-delay:0s">
+      <div class="stat-label">Entradas hoy</div>
+      <div class="stat-value" id="statEntrada">—</div>
+      <div class="stat-sub">registros de entrada</div>
+    </div>
+    <div class="stat-card" style="--card-color:#f87171" style="animation-delay:0.1s">
+      <div class="stat-label">Salidas hoy</div>
+      <div class="stat-value" id="statSalida">—</div>
+      <div class="stat-sub">registros de salida</div>
+    </div>
+    <div class="stat-card" style="--card-color:#fbbf24" style="animation-delay:0.2s">
+      <div class="stat-label">Descansos</div>
+      <div class="stat-value" id="statDescanso">—</div>
+      <div class="stat-sub">salidas + entradas</div>
+    </div>
+    <div class="stat-card" style="--card-color:#34d399" style="animation-delay:0.3s">
+      <div class="stat-label">Personas activas</div>
+      <div class="stat-value" id="statPersonas">—</div>
+      <div class="stat-sub">total en sistema</div>
+    </div>
+  </div>
+
+  <!-- REGISTROS PANEL -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Registros de Asistencia</div>
+      <div class="filters-row">
+        <input type="date" id="fechaFiltro" class="form-control-dark" />
+        <input type="text" id="busquedaGeneral" placeholder="Buscar nombre o sede…" class="form-control-dark" />
+        <select id="tipoFiltro" class="form-control-dark">
+          <option value="">Todos los tipos</option>
+          <option value="entrada">Entrada</option>
+          <option value="salida">Salida</option>
+          <option value="descanso_salida">Descanso salida</option>
+          <option value="descanso_entrada">Descanso entrada</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Sede</th>
+            <th>Tipo</th>
+            <th>Fecha / Hora</th>
+          </tr>
+        </thead>
+        <tbody id="registrosBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- GRÁFICO -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Distribución de Registros</div>
+    </div>
+    <div class="chart-area">
+      <canvas id="graficoAsistencias"></canvas>
+    </div>
+  </div>
+
+  <!-- PERSONAS PANEL -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Personas Registradas</div>
+      <div class="filters-row">
+        <input type="text" id="busquedaPersonas" placeholder="Buscar persona…" class="form-control-dark" />
+        <select id="filtroActivo" class="form-control-dark" style="min-width:130px">
+          <option value="">Todos</option>
+          <option value="1">Activos</option>
+          <option value="0">Inactivos</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Sede</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="personasBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL EDITAR -->
+<div class="modal fade modal-dark" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Editar Persona</div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-3">
+          <label style="font-size:0.78rem;color:var(--muted);font-family:var(--font-mono)">NOMBRE</label>
+          <input type="text" id="editNombre" class="form-control-dark w-100 mt-1" />
+        </div>
+        <div>
+          <label style="font-size:0.78rem;color:var(--muted);font-family:var(--font-mono)">SEDE</label>
+          <input type="text" id="editSede" class="form-control-dark w-100 mt-1" />
+        </div>
+      </div>
+      <div class="modal-footer p-3 gap-2">
+        <button class="btn-accent" id="editConfirm">Guardar cambios</button>
+        <button type="button" style="background:none;border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:8px;font-size:0.82rem;cursor:pointer" data-bs-dismiss="modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<div id="overlayMensaje" style="
-    display:none;
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    background:rgba(0,0,0,0.85);
-    color:#00ffcc;
-    font-size:3em;
-    font-weight:bold;
-    text-align:center;
-    line-height:100vh;
-    z-index:9999;
-">MENSAJE</div>
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
 
-<h2 id="resultado" class="estado-esperando">Cargando...</h2>
-</div>
-
-<script src="/js/face-api.min.js"></script>
-
-<script>
-document.addEventListener("DOMContentLoaded", async () => {
-
-// ---------- CONTROL DE ACCESO ----------
-const token = localStorage.getItem("token");
-
-// NAVBAR
-const linkLogin = document.getElementById("linkLogin");
-const linkPanel = document.getElementById("linkPanel");
-const linkRegistro = document.getElementById("linkRegistro");
-const linkUsuarios = document.getElementById("linkUsuarios");
-const linkLogout = document.getElementById("linkLogout");
-
-if (token) {
-    linkLogin.style.display = "none";
-    linkLogout.style.display = "block";
-
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const role = payload.role;
-
-        if (role === "admin") {
-            linkPanel.style.display = "block";
-            linkRegistro.style.display = "block";
-            if (linkUsuarios) linkUsuarios.style.display = "block";
-        } else if (role === "user") {
-            linkPanel.style.display = "none";
-            linkRegistro.style.display = "block"; // operador solo registro
-            if (linkUsuarios) linkUsuarios.style.display = "none";
-        } else {
-            linkPanel.style.display = "none";
-            linkRegistro.style.display = "none";
-            linkUsuarios.style.display = "none";
-        }
-    } catch (e) {
-        console.error("Token inválido", e);
-        localStorage.removeItem("token");
-        // Solo ocultar links sensibles
-        linkPanel.style.display = "none";
-        linkRegistro.style.display = "none";
-        linkUsuarios.style.display = "none";
-        linkLogout.style.display = "none";
-        linkLogin.style.display = "block";
-    }
-} else {
-    // Usuario no logueado → puede ver index
-    linkLogin.style.display = "block";
-    linkPanel.style.display = "none";
-    linkRegistro.style.display = "none";
-    linkUsuarios.style.display = "none";
-    linkLogout.style.display = "none";
-}
-
-// ---------- LOGOUT ----------
-const logoutBtn = document.getElementById("logoutBtn");
-logoutBtn.addEventListener("click", (e) => {
-    e.preventDefault();  // evita que el link "#" recargue la página
-    localStorage.removeItem("token");
-    window.location.href = "login.html";
-});
-
-
-    // ---------- FACE API ----------
-    const video = document.getElementById("video");
-    const canvas = document.getElementById("canvas");
-    const resultado = document.getElementById("resultado");
-    const selectTipo = document.getElementById("tipoRegistro");
-    const overlay = document.getElementById("overlayMensaje");
-    const ctx = canvas.getContext("2d");
-
-    let tipoSeleccionado = "";
-    let procesando = false;
-    let intervalDetect = null;
-
-    const sonidoOK = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
-    const sonidoError = new Audio("https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg");
-
-    await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
-    await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
-    await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
-    resultado.innerText = "Selecciona acción...";
-    resultado.className = "estado-esperando";
-
-    async function activarCamara() {
-        if (intervalDetect) clearInterval(intervalDetect);
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            video.srcObject = stream;
-            intervalDetect = setInterval(detectar, 200);
-        } catch (err) {
-            resultado.innerText = "No se pudo acceder a la cámara ❌";
-            resultado.className = "estado-error";
-            console.error(err);
-        }
-    }
-
-    function cerrarCamara() {
-        if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
-        if (intervalDetect) clearInterval(intervalDetect);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-
-    selectTipo.addEventListener("change", () => {
-        tipoSeleccionado = selectTipo.value;
-        if (!tipoSeleccionado) {
-            cerrarCamara();
-            resultado.innerText = "Selecciona acción...";
-            resultado.className = "estado-esperando";
-            return;
-        }
-        activarCamara();
-    });
-
-    async function detectar() {
-        if (!tipoSeleccionado || procesando) return;
-        procesando = true;
-
-        const deteccion = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-            .withFaceLandmarks()
-            .withFaceDescriptor();
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        if (!deteccion) {
-            resultado.innerText = "Buscando rostro...";
-            resultado.className = "estado-esperando";
-            procesando = false;
-            return;
-        }
-
-        const resizedDetections = faceapi.resizeResults(deteccion, { width: canvas.width, height: canvas.height });
-        const box = resizedDetections.detection.box;
-
-        let nombreUsuario = "";
-        const headers = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-
-        try {
-            const res = await fetch("/reconocer", {
-                method: "POST",
-                headers,
-                body: JSON.stringify({ descriptor: Array.from(deteccion.descriptor), tipo: tipoSeleccionado })
-            });
-            const data = await res.json();
-
-            if (res.ok && data.ok) {
-                nombreUsuario = data.nombre || "Desconocido";
-                const hora = new Date().getHours();
-                const saludo = hora < 12 ? "¡Buenos días" : (hora < 19 ? "¡Buenas tardes" : "¡Buenas noches");
-                overlay.innerText = `${saludo} ${nombreUsuario} ✅`;
-                overlay.style.display = "block";
-                sonidoOK.play();
-                cerrarCamara();
-                setTimeout(() => {
-                    overlay.style.display = "none";
-                    tipoSeleccionado = "";
-                    selectTipo.value = "";
-                    resultado.innerText = "Selecciona acción...";
-                    resultado.className = "estado-esperando";
-                }, 3000);
-            } else {
-                nombreUsuario = "No reconocido";
-                resultado.innerText = data.mensaje || "Usuario no reconocido";
-                resultado.className = "estado-error";
-                sonidoError.play();
-            }
-        } catch (err) {
-            nombreUsuario = "Error";
-            resultado.innerText = "Error de conexión o servidor ❌";
-            resultado.className = "estado-error";
-            console.error(err);
-            sonidoError.play();
-        }
-
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = `hsl(${Date.now() % 360}, 100%, 50%)`;
-        ctx.shadowColor = "#00ffcc";
-        ctx.shadowBlur = 15;
-        ctx.beginPath();
-        ctx.roundRect(box.x, box.y, box.width, box.height, 12);
-        ctx.stroke();
-
-        ctx.font = "20px Arial";
-        ctx.fillStyle = "#00ffcc";
-        ctx.textAlign = "center";
-        ctx.fillText(nombreUsuario, box.x + box.width/2, box.y - 10);
-
-        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-
-        procesando = false;
-    }
-});
-</script>
-
-<footer class="footer-custom">
-<div class="footer-content">
-    <span class="powered">Powered by</span>
-    <span class="brand-footer">HOPD</span>
-    <div class="year">© <span id="year"></span> Control Biométrico</div>
-</div>
+<footer>
+  Powered by <span class="footer-brand">HOPD</span> &nbsp;·&nbsp; © <span id="year"></span> Control Biométrico
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+/* ===== GUARD ===== */
+if (!localStorage.getItem("token")) window.location.href = "login.html";
+
+const token = localStorage.getItem("token");
+let chart;
+let editingId = null;
+let allPersonas = [];
+
+/* ===== DATETIME ===== */
+function updateClock() {
+  const now = new Date();
+  document.getElementById("currentDateTime").textContent =
+    now.toLocaleDateString("es-CO", { weekday:"long", year:"numeric", month:"long", day:"numeric" })
+    + " · " + now.toLocaleTimeString("es-CO", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+}
+updateClock();
+setInterval(updateClock, 1000);
 document.getElementById("year").textContent = new Date().getFullYear();
+
+/* ===== TOAST ===== */
+function toast(msg, color = "var(--accent)") {
+  const el = document.createElement("div");
+  el.className = "toast-item";
+  el.style.borderLeftColor = color;
+  el.textContent = msg;
+  document.getElementById("toastContainer").appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+/* ===== DEBOUNCE ===== */
+function debounce(fn, d) {
+  let t;
+  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), d); };
+}
+
+/* ===== LOGOUT ===== */
+document.getElementById("logoutBtn").addEventListener("click", e => {
+  e.preventDefault();
+  localStorage.removeItem("token");
+  window.location.href = "login.html";
+});
+
+/* ===== LOAD REGISTROS ===== */
+async function cargarRegistros() {
+  const params = new URLSearchParams();
+  const fecha = document.getElementById("fechaFiltro").value;
+  const busq  = document.getElementById("busquedaGeneral").value;
+  const tipo  = document.getElementById("tipoFiltro").value;
+  if (fecha) params.append("fecha", fecha);
+  if (busq)  params.append("busqueda", busq);
+  if (tipo)  params.append("tipo", tipo);
+
+  try {
+    const res  = await fetch("/asistencias?" + params, { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    renderRegistros(data);
+    actualizarStats(data);
+    actualizarGrafico(data);
+  } catch {
+    toast("Error al cargar registros", "#f87171");
+  }
+}
+
+function renderRegistros(data) {
+  const tbody = document.getElementById("registrosBody");
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="icon">📋</div>Sin registros para este filtro</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td style="font-weight:500">${r.nombre}</td>
+      <td style="color:var(--muted)">${r.sede}</td>
+      <td><span class="badge-tipo badge-${r.tipo}">${formatTipo(r.tipo)}</span></td>
+      <td style="font-family:var(--font-mono);font-size:0.78rem;color:var(--muted)">${new Date(r.fecha).toLocaleString("es-CO")}</td>
+    </tr>
+  `).join("");
+}
+
+function formatTipo(t) {
+  return { entrada:"ENTRADA", salida:"SALIDA", descanso_salida:"DESC. SAL.", descanso_entrada:"DESC. ENT." }[t] || t.toUpperCase();
+}
+
+/* ===== STATS ===== */
+function actualizarStats(data) {
+  const hoy = new Date().toDateString();
+  const hoyData = data.filter(r => new Date(r.fecha).toDateString() === hoy);
+  document.getElementById("statEntrada").textContent  = hoyData.filter(r=>r.tipo==="entrada").length;
+  document.getElementById("statSalida").textContent   = hoyData.filter(r=>r.tipo==="salida").length;
+  document.getElementById("statDescanso").textContent = hoyData.filter(r=>r.tipo.startsWith("descanso")).length;
+}
+
+/* ===== GRÁFICO ===== */
+function actualizarGrafico(data) {
+  const ctx = document.getElementById("graficoAsistencias").getContext("2d");
+  const tipos   = ["entrada","salida","descanso_salida","descanso_entrada"];
+  const labels  = ["Entrada","Salida","Desc. Salida","Desc. Entrada"];
+  const counts  = tipos.map(t => data.filter(r=>r.tipo===t).length);
+  const colors  = ["#3b82f6","#ef4444","#f59e0b","#10b981"];
+
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data: counts,
+        backgroundColor: colors.map(c => c + "33"),
+        borderColor: colors,
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#0f1520",
+          borderColor: "rgba(0,200,180,0.2)",
+          borderWidth: 1,
+          titleColor: "#00c8b4",
+          bodyColor: "#e8edf5",
+          padding: 10,
+        }
+      },
+      scales: {
+        x: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#5a6a82", font: { family: "'Space Mono'" } } },
+        y: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#5a6a82", stepSize: 1 }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+/* ===== EXPORTAR EXCEL (cliente) ===== */
+document.getElementById("exportExcel").addEventListener("click", async () => {
+  try {
+    const params = new URLSearchParams();
+    const fecha = document.getElementById("fechaFiltro").value;
+    const busq  = document.getElementById("busquedaGeneral").value;
+    if (fecha) params.append("fecha", fecha);
+    if (busq)  params.append("busqueda", busq);
+
+    const res = await fetch("/asistencias?" + params, { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+
+    if (!data.length) { toast("Sin datos para exportar", "#f59e0b"); return; }
+
+    const rows = data.map(r => ({
+      Nombre: r.nombre,
+      Sede: r.sede,
+      Tipo: r.tipo,
+      "Fecha/Hora": new Date(r.fecha).toLocaleString("es-CO")
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Asistencias");
+    XLSX.writeFile(wb, `asistencias_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast("✓ Excel exportado correctamente");
+  } catch {
+    /* fallback to server */
+    const res = await fetch("/exportar-registros", { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) {
+      const blob = await res.blob();
+      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "registros.xlsx" });
+      document.body.appendChild(a); a.click(); a.remove();
+    } else {
+      toast("Error al exportar", "#f87171");
+    }
+  }
+});
+
+/* ===== PERSONAS ===== */
+async function cargarPersonas() {
+  try {
+    const res = await fetch("/personas", { headers: { Authorization: `Bearer ${token}` } });
+    allPersonas = await res.json();
+    document.getElementById("statPersonas").textContent = allPersonas.filter(p=>p.activo).length;
+    renderPersonas();
+  } catch {
+    toast("Error al cargar personas", "#f87171");
+  }
+}
+
+function renderPersonas() {
+  const busq    = document.getElementById("busquedaPersonas").value.toLowerCase();
+  const filtroA = document.getElementById("filtroActivo").value;
+  const tbody   = document.getElementById("personasBody");
+
+  let lista = allPersonas;
+  if (busq)    lista = lista.filter(p => p.nombre.toLowerCase().includes(busq) || p.sede.toLowerCase().includes(busq));
+  if (filtroA !== "") lista = lista.filter(p => String(p.activo ? 1 : 0) === filtroA);
+
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="icon">👤</div>Sin personas encontradas</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = lista.map(p => `
+    <tr data-id="${p.id}">
+      <td style="font-weight:500">${p.nombre}</td>
+      <td style="color:var(--muted)">${p.sede}</td>
+      <td>
+        <span class="status-dot ${p.activo ? 'status-active' : 'status-inactive'}"></span>
+        <span style="font-size:0.8rem;color:${p.activo?'#34d399':'var(--muted)'}">${p.activo ? "Activo" : "Inactivo"}</span>
+      </td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-sm-action btn-edit editBtn">Editar</button>
+        <button class="btn-sm-action btn-del deleteBtn">Eliminar</button>
+        <button class="btn-sm-action btn-toggle toggleBtn">${p.activo ? "Desactivar" : "Activar"}</button>
+      </td>
+    </tr>
+  `).join("");
+
+  tbody.querySelectorAll(".editBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = +btn.closest("tr").dataset.id;
+      const p  = allPersonas.find(x => x.id === id);
+      document.getElementById("editNombre").value = p.nombre;
+      document.getElementById("editSede").value   = p.sede;
+      editingId = id;
+      new bootstrap.Modal(document.getElementById("editModal")).show();
+    });
+  });
+
+  tbody.querySelectorAll(".deleteBtn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("¿Eliminar esta persona?")) return;
+      const id = +btn.closest("tr").dataset.id;
+      await fetch(`/personas/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      toast("Persona eliminada", "#f87171");
+      cargarPersonas();
+    });
+  });
+
+  tbody.querySelectorAll(".toggleBtn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = +btn.closest("tr").dataset.id;
+      await fetch(`/personas/${id}/toggle`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      toast("Estado actualizado");
+      cargarPersonas();
+    });
+  });
+}
+
+/* MODAL EDIT CONFIRM */
+document.getElementById("editConfirm").addEventListener("click", async () => {
+  const nombre = document.getElementById("editNombre").value.trim();
+  const sede   = document.getElementById("editSede").value.trim();
+  if (!nombre || !sede) { toast("Completa todos los campos", "#f59e0b"); return; }
+  await fetch(`/personas/${editingId}`, {
+    method: "PUT",
+    headers: { "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+    body: JSON.stringify({ nombre, sede })
+  });
+  bootstrap.Modal.getInstance(document.getElementById("editModal")).hide();
+  toast("✓ Persona actualizada");
+  cargarPersonas();
+});
+
+/* ===== EVENTOS ===== */
+document.getElementById("fechaFiltro").addEventListener("input", cargarRegistros);
+document.getElementById("tipoFiltro").addEventListener("change", cargarRegistros);
+document.getElementById("busquedaGeneral").addEventListener("input", debounce(cargarRegistros, 300));
+document.getElementById("busquedaPersonas").addEventListener("input", debounce(renderPersonas, 250));
+document.getElementById("filtroActivo").addEventListener("change", renderPersonas);
+
+/* ===== INIT ===== */
+window.addEventListener("load", () => {
+  cargarRegistros();
+  cargarPersonas();
+});
 </script>
 </body>
 </html>
