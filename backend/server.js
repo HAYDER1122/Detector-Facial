@@ -157,7 +157,7 @@ app.get("/usuarios", verificarToken, soloAdmin, (req, res) => {
 // REGISTRAR PERSONA
 
 
-app.post("/registrar-persona", verificarToken, soloAdmin, (req, res) => {
+app.post("/registrar-persona", verificarToken, soloAdminOOperador, (req, res) => {
   const { nombre, sede, descriptors } = req.body;
 
   if (!nombre || !sede || !Array.isArray(descriptors))
