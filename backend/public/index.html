@@ -565,35 +565,45 @@ Powered by <span class="footer-brand">HOPD</span> &nbsp;·&nbsp; © <span id="ye
 document.addEventListener("DOMContentLoaded", async () => {
 
 /* ===== NAVBAR AUTH ===== */
-// ✅ Correcto — verifica token Y que sea admin
+document.addEventListener("DOMContentLoaded", () => {
+
 const token = localStorage.getItem("token");
-if (!token) window.location.href = "login.html";
 
-try {
-const payload = JSON.parse(atob(token.split('.')[1]));
+  // ❌ QUITA cualquier redirección a login.html en index.html
+  // index.html es accesible para todos, con o sin sesión
 
-} catch {
-localStorage.removeItem("token");
-window.location.href = "login.html";
-}
-
+  // Navbar según sesión
 if (token) {
-document.getElementById("linkLogin").style.display   = "none";
-document.getElementById("linkLogout").style.display  = "block";
-try {
+    try {
     const payload = JSON.parse(atob(token.split('.')[1]));
-    const role = payload.role;
+    const role = payload.rol || payload.role;
+
+    document.getElementById("linkLogin").style.display   = "none";
+    document.getElementById("linkLogout").style.display  = "block";
+
     if (role === "admin") {
         document.getElementById("linkPanel").style.display    = "block";
         document.getElementById("linkRegistro").style.display = "block";
-        document.getElementById("linkUsuarios").style.display = "block";
     } else if (role === "user") {
         document.getElementById("linkRegistro").style.display = "block";
     }
-} catch {
+    } catch {
     localStorage.removeItem("token");
+    }
 }
-}
+
+  // Logout
+document.getElementById("logoutBtn")?.addEventListener("click", e => {
+    e.preventDefault();
+    localStorage.removeItem("token");
+    window.location.href = "login.html";
+});
+
+document.getElementById("hamburger")?.addEventListener("click", () =>
+    document.getElementById("navLinks").classList.toggle("show")
+);
+
+});
 
 /* ===== ELEMENTS ===== */
 const video        = document.getElementById("video");
