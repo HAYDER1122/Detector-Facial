@@ -2,220 +2,608 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Registrar Persona - Control Biométrico</title>
-<style>
-body { background:#0b0f17; color:white; font-family:Arial; text-align:center; margin:0; padding:0; min-height:100vh; display:flex; flex-direction:column;}
-h1 { color:#00ffcc; margin-top:20px; }
-#panel { background:#111827; width:500px; margin:auto; padding:20px; border-radius:12px; box-shadow:0 10px 25px rgba(0,255,204,0.2); margin-top:20px; flex:1;}
-input, select, button { width:80%; padding:10px; margin:10px 0; border-radius:6px; border:none; font-size:16px; }
-button { background:#00ffcc; cursor:pointer; font-weight:bold; transition:0.3s; }
-button:hover { background:#00d4aa; }
-#videoContainer { position:relative; display:inline-block; margin-top:20px; }
-video { border-radius:10px; border:2px solid #00ffcc; }
-canvas { position:absolute; top:0; left:0; border-radius:10px; pointer-events:none; }
-#mensaje { margin-top:15px; font-weight:bold; }
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registrar Persona — Control Biométrico</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-/* Navbar */
-.navbar { display:flex; justify-content:space-between; align-items:center; background:#111827; padding:15px 25px; box-shadow:0 4px 12px rgba(0,0,0,0.5); }
-.navbar .brand { font-size:1.4em; font-weight:bold; color:#00ffcc; }
-.navbar .nav-links { list-style:none; display:flex; gap:25px; margin:0; padding:0; }
-.navbar .nav-links li a { color:white; text-decoration:none; font-weight:bold; transition:0.3s; }
-.navbar .nav-links li a:hover { color:#00ffcc; }
-.hamburger{ display:none; flex-direction:column; cursor:pointer; gap:5px; }
-.hamburger div{ width:25px; height:3px; background:white; border-radius:2px; }
-@media (max-width:768px){
-  .nav-links{ display:none; flex-direction:column; position:absolute; top:65px; right:20px; background:#111827; padding:15px; border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,0.6); }
-  .nav-links.show{ display:flex; }
-  .hamburger{ display:flex; }
+<style>
+:root {
+  --bg: #080c14;
+  --surface: #0f1520;
+  --surface2: #151d2e;
+  --surface3: #1c2740;
+  --border: rgba(0,200,180,0.12);
+  --accent: #00c8b4;
+  --accent-dim: rgba(0,200,180,0.12);
+  --text: #e8edf5;
+  --muted: #5a6a82;
+  --danger: #ef4444;
+  --success: #10b981;
+  --font-mono: 'Space Mono', monospace;
+  --font-body: 'DM Sans', sans-serif;
+  --radius: 14px;
+  --shadow: 0 8px 40px rgba(0,0,0,0.5);
 }
 
-/* Footer */
-.footer-custom { background:#111827; padding:25px 0; border-top:1px solid rgba(255,255,255,0.08); margin-top:auto; }
-.footer-content { text-align:center; font-size:0.9em; color:#aaa; }
-.brand-footer { color:#00ffcc; font-weight:bold; letter-spacing:2px; animation: glowFooter 2s ease-in-out infinite alternate; }
-@keyframes glowFooter { from{ text-shadow:0 0 5px #00ffcc; } to{ text-shadow:0 0 15px #00ffcc; } }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* noise */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none; z-index:0;
+}
+
+/* ===== NAVBAR ===== */
+.navbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+
+.brand {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  font-size: 0.95rem;
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.brand-dot {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.83rem;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.nav-links a:hover { color: var(--text); background: var(--surface2); }
+.nav-links .danger a { color: var(--danger); }
+.nav-links .danger a:hover { background: rgba(239,68,68,0.1); }
+
+.hamburger { display:none; flex-direction:column; gap:5px; cursor:pointer; padding:4px; }
+.hamburger div { width:22px; height:2px; background: var(--muted); border-radius:2px; transition:0.3s; }
+
+@media(max-width:680px){
+  .hamburger { display:flex; }
+  .nav-links {
+    display:none; flex-direction:column; gap:0;
+    position:absolute; top:64px; right:16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px;
+    min-width: 180px;
+    box-shadow: var(--shadow);
+  }
+  .nav-links.show { display:flex; }
+  .nav-links a { padding: 10px 14px; }
+}
+
+/* ===== MAIN ===== */
+main {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 20px;
+  position: relative;
+  z-index: 1;
+}
+
+/* glow blob */
+main::before {
+  content:'';
+  position:fixed;
+  top:20%; left:50%;
+  transform:translate(-50%,-50%);
+  width:500px; height:500px;
+  background: radial-gradient(circle, rgba(0,200,180,0.04) 0%, transparent 70%);
+  pointer-events:none;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 520px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: fadeUp 0.5s ease both;
+}
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+.card-header {
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 3px;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.card-title {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.card-body { padding: 24px 28px; }
+
+/* ===== FORM ===== */
+.field { margin-bottom: 16px; }
+
+.field label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 11px 15px;
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  appearance: none;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--accent);
+  background: var(--surface3);
+}
+
+.field input::placeholder { color: var(--muted); }
+.field select option { background: var(--surface2); }
+
+/* select arrow */
+.select-wrap { position: relative; }
+.select-wrap::after {
+  content: '▾';
+  position: absolute;
+  right: 14px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+  font-size: 0.8rem;
+}
+
+.btn-primary {
+  width: 100%;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 12px;
+  border-radius: 9px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 4px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent);
+  color: #000;
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ===== STATUS MSG ===== */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 15px;
+  border-radius: 9px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 16px;
+  transition: all 0.3s;
+  min-height: 44px;
+}
+
+.status-bar.success { border-color: rgba(16,185,129,0.4); color: #34d399; background: rgba(16,185,129,0.07); }
+.status-bar.error   { border-color: rgba(239,68,68,0.4);  color: #f87171; background: rgba(239,68,68,0.07); }
+.status-bar.loading { border-color: rgba(0,200,180,0.4);  color: var(--accent); background: var(--accent-dim); }
+
+.status-dot-msg {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.status-bar.loading .status-dot-msg {
+  animation: pulse 1s infinite;
+}
+
+/* ===== DIVIDER ===== */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 20px 0;
+}
+
+/* ===== VIDEO AREA ===== */
+.video-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.video-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  align-self: flex-start;
+}
+
+.video-wrap {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 0 30px rgba(0,200,180,0.06);
+  width: 100%;
+  max-width: 464px;
+  aspect-ratio: 4/3;
+  background: var(--surface2);
+}
+
+.video-wrap video,
+.video-wrap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+/* scan line animation */
+.video-wrap::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  top: 0;
+  animation: scan 3s linear infinite;
+  opacity: 0.5;
+  z-index: 3;
+  pointer-events: none;
+}
+
+@keyframes scan {
+  0%   { top: 0%; opacity: 0; }
+  5%   { opacity: 0.6; }
+  95%  { opacity: 0.6; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* corner brackets */
+.corner { position: absolute; width: 18px; height: 18px; z-index: 4; }
+.corner-tl { top:10px; left:10px; border-top:2px solid var(--accent); border-left:2px solid var(--accent); }
+.corner-tr { top:10px; right:10px; border-top:2px solid var(--accent); border-right:2px solid var(--accent); }
+.corner-bl { bottom:10px; left:10px; border-bottom:2px solid var(--accent); border-left:2px solid var(--accent); }
+.corner-br { bottom:10px; right:10px; border-bottom:2px solid var(--accent); border-right:2px solid var(--accent); }
+
+/* ===== FOOTER ===== */
+footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 18px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  position: relative;
+  z-index: 1;
+}
+
+.footer-brand {
+  color: var(--accent);
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px rgba(0,200,180,0.5);
+}
 </style>
 </head>
 <body>
 
 <!-- NAVBAR -->
 <nav class="navbar">
-  <div class="brand">Control Biométrico</div>
+  <a class="brand" href="index.html">
+    <div class="brand-dot"></div>
+    CTRL_BIOMÉTRICO
+  </a>
   <div class="hamburger" id="hamburger"><div></div><div></div><div></div></div>
   <ul class="nav-links" id="navLinks">
     <li id="linkLogin"><a href="login.html">Login</a></li>
-    <li id="linkIndex" style="display:none;"><a href="index.html">Inicio</a></li>
-    <li id="linkPanel" style="display:none;"><a href="admin.html">Panel Administrativo</a></li>
-    <li id="linkUsuarios" style="display:none;"><a href="usuarios.html">Registrar Usuarios</a></li>
-    <li id="linkLogout" style="display:none;"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
+    <li id="linkIndex" style="display:none"><a href="index.html">Inicio</a></li>
+    <li id="linkPanel" style="display:none"><a href="admin.html">Panel Admin</a></li>
+    <li id="linkUsuarios" style="display:none"><a href="usuarios.html">Usuarios</a></li>
+    <li id="linkLogout" class="danger" style="display:none"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
   </ul>
 </nav>
 
-<h1>Registrar Persona</h1>
+<!-- MAIN -->
+<main>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-eyebrow">Sistema Biométrico</div>
+      <div class="card-title">Registrar Persona</div>
+    </div>
 
-<div id="panel">
-  <input type="text" id="nombre" placeholder="Nombre completo">
-  <select id="sede">
-    <option value="">Seleccionar sede...</option>
-    <option value="SOATA">SOATA</option>
-    <option value="PAIPA">PAIPA</option>
-  </select>
-  <button id="btnRegistrar">Registrar Persona</button>
-  <div id="mensaje">Cargando...</div>
+    <div class="card-body">
 
-  <div id="videoContainer">
-    <video id="video" width="400" height="300" autoplay muted playsinline></video>
-    <canvas id="canvas" width="400" height="300"></canvas>
+      <!-- FORM -->
+      <div class="field">
+        <label>Nombre completo</label>
+        <input type="text" id="nombre" placeholder="Ej: Juan Pérez" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label>Sede</label>
+        <div class="select-wrap">
+          <select id="sede">
+            <option value="">Seleccionar sede…</option>
+            <option value="SOATA">SOATA</option>
+            <option value="PAIPA">PAIPA</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="btnRegistrar">Registrar Persona</button>
+
+      <!-- STATUS -->
+      <div class="status-bar loading" id="mensaje">
+        <div class="status-dot-msg"></div>
+        <span id="mensajeTexto">Cargando modelos…</span>
+      </div>
+
+      <hr class="divider">
+
+      <!-- VIDEO -->
+      <div class="video-section">
+        <div class="video-label">Vista de cámara en vivo</div>
+        <div class="video-wrap">
+          <div class="corner corner-tl"></div>
+          <div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div>
+          <div class="corner corner-br"></div>
+          <video id="video" autoplay muted playsinline></video>
+          <canvas id="canvas"></canvas>
+        </div>
+      </div>
+
+    </div>
   </div>
-</div>
+</main>
 
-<footer class="footer-custom">
-  <div class="footer-content">
-    <span class="powered">Powered by</span>
-    <span class="brand-footer">HOPD</span>
-    <div class="year">© <span id="year"></span> Control Biométrico</div>
-  </div>
+<footer>
+  Powered by <span class="footer-brand">HOPD</span> &nbsp;·&nbsp; © <span id="year"></span> Control Biométrico
 </footer>
 
 <script src="/js/face-api.min.js"></script>
 <script>
+/* ===== AUTH ===== */
 const token = localStorage.getItem("token");
-if(!token){
-  window.location.href="login.html";
-}
+if (!token) window.location.href = "login.html";
 
-// Validar rol
 let role = null;
-try{
+try {
   const payload = JSON.parse(atob(token.split('.')[1]));
   role = payload.role;
-  if(role!=="admin" && role!=="user") window.location.href="login.html";
-}catch(e){
-  console.error("Token inválido", e);
+  if (role !== "admin" && role !== "user") throw new Error();
+} catch {
   localStorage.removeItem("token");
-  window.location.href="login.html";
+  window.location.href = "login.html";
 }
 
-// Navbar dinámico
-const linkLogin = document.getElementById("linkLogin");
-const linkIndex = document.getElementById("linkIndex");
-const linkPanel = document.getElementById("linkPanel");
-const linkUsuarios = document.getElementById("linkUsuarios");
-const linkLogout = document.getElementById("linkLogout");
-const logoutBtn = document.getElementById("logoutBtn");
-const hamburger = document.getElementById("hamburger");
-const navLinks = document.getElementById("navLinks");
-
-linkLogin.style.display="none";
-linkLogout.style.display="block";
-linkIndex.style.display="block"; // ambos roles ven index
-if(role==="admin"){
-  linkPanel.style.display="block";
-  linkUsuarios.style.display="block";
-}else{
-  linkPanel.style.display="none";
-  linkUsuarios.style.display="none";
+/* ===== NAVBAR DINÁMICO ===== */
+document.getElementById("linkLogin").style.display   = "none";
+document.getElementById("linkLogout").style.display  = "block";
+document.getElementById("linkIndex").style.display   = "block";
+if (role === "admin") {
+  document.getElementById("linkPanel").style.display    = "block";
+  document.getElementById("linkUsuarios").style.display = "block";
 }
 
-logoutBtn.addEventListener("click", e=>{
+document.getElementById("logoutBtn").addEventListener("click", e => {
   e.preventDefault();
   localStorage.removeItem("token");
-  window.location.href="login.html";
+  window.location.href = "login.html";
 });
-hamburger.addEventListener("click", ()=>navLinks.classList.toggle("show"));
 
-// Video & Face API
-const video = document.getElementById("video");
+document.getElementById("hamburger").addEventListener("click", () =>
+  document.getElementById("navLinks").classList.toggle("show")
+);
+
+/* ===== STATUS HELPER ===== */
+function setStatus(msg, type = "loading") {
+  const bar = document.getElementById("mensaje");
+  bar.className = `status-bar ${type}`;
+  document.getElementById("mensajeTexto").textContent = msg;
+}
+
+/* ===== VIDEO & FACE API ===== */
+const video  = document.getElementById("video");
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-const btnRegistrar = document.getElementById("btnRegistrar");
-const mensaje = document.getElementById("mensaje");
+const ctx    = canvas.getContext("2d");
 
-async function cargarModelos(){
-  mensaje.innerText="Cargando modelos...";
+async function cargarModelos() {
+  setStatus("Cargando modelos de reconocimiento…", "loading");
   await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
   await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
   await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
-  mensaje.innerText="Modelos cargados ✅";
+  setStatus("Modelos cargados ✓", "success");
 }
 
-async function activarCamara(){
-  try{
-    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
-    video.srcObject=stream;
+async function activarCamara() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+    video.srcObject = stream;
     await video.play();
-    mensaje.innerText="Cámara activa ✅";
-  }catch(err){
-    console.error(err);
-    mensaje.innerText="No se pudo acceder a la cámara.";
-    mensaje.style.color="red";
+    setStatus("Cámara activa. Listo para registrar.", "success");
+  } catch {
+    setStatus("No se pudo acceder a la cámara.", "error");
   }
 }
 
-async function capturarDescriptor(){
-  const descriptors=[];
-  for(let i=0;i<3;i++){
-    const deteccion=await faceapi.detectSingleFace(video,new faceapi.TinyFaceDetectorOptions({inputSize:320,scoreThreshold:0.5}))
+async function capturarDescriptor() {
+  const descriptors = [];
+  for (let i = 0; i < 3; i++) {
+    const det = await faceapi
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
       .withFaceLandmarks().withFaceDescriptor();
-    if(!deteccion){ mensaje.innerText="No se detecta rostro"; mensaje.style.color="red"; return null; }
-    descriptors.push(Array.from(deteccion.descriptor));
-    await new Promise(r=>setTimeout(r,500));
+    if (!det) { setStatus("No se detecta rostro. Acércate a la cámara.", "error"); return null; }
+    descriptors.push(Array.from(det.descriptor));
+    await new Promise(r => setTimeout(r, 500));
   }
-  return descriptors[0].map((_,i)=>descriptors.reduce((sum,d)=>sum+d[i],0)/descriptors.length);
+  return descriptors[0].map((_, i) => descriptors.reduce((s, d) => s + d[i], 0) / descriptors.length);
 }
 
-function dibujarRostro(nombre="Detectando..."){
-  const displaySize={width:video.width,height:video.height};
-  faceapi.matchDimensions(canvas,displaySize);
-  setInterval(async ()=>{
-    const deteccion=await faceapi.detectSingleFace(video,new faceapi.TinyFaceDetectorOptions({inputSize:320,scoreThreshold:0.5}))
-      .withFaceLandmarks().withFaceDescriptor();
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    if(deteccion){
-      const resizedDetections=faceapi.resizeResults(deteccion,displaySize);
-      const box=resizedDetections.detection.box;
-      ctx.strokeStyle="#00ffcc";
-      ctx.lineWidth=2;
-      ctx.shadowColor="#00ffcc";
-      ctx.shadowBlur=10;
-      ctx.strokeRect(box.x,box.y,box.width,box.height);
-      ctx.font="16px Arial";
-      ctx.fillStyle="#00ffcc";
-      ctx.textAlign="center";
-      ctx.fillText(nombre,box.x+box.width/2,box.y-10);
+function dibujarRostro() {
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  const displaySize = { width: canvas.width, height: canvas.height };
+  faceapi.matchDimensions(canvas, displaySize);
+
+  setInterval(async () => {
+    const det = await faceapi
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+      .withFaceLandmarks();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (det) {
+      const r = faceapi.resizeResults(det, displaySize);
+      const b = r.detection.box;
+      ctx.strokeStyle = "#00c8b4";
+      ctx.lineWidth   = 2;
+      ctx.shadowColor = "#00c8b4";
+      ctx.shadowBlur  = 12;
+      ctx.strokeRect(b.x, b.y, b.width, b.height);
+      ctx.shadowBlur = 0;
+      ctx.font = "13px 'Space Mono', monospace";
+      ctx.fillStyle = "#00c8b4";
+      ctx.textAlign = "center";
+      ctx.fillText("DETECTADO", b.x + b.width / 2, b.y - 8);
     }
-  },200);
+  }, 200);
 }
 
-// Inicializar
-window.addEventListener("load",async()=>{
+/* ===== REGISTRAR ===== */
+document.getElementById("btnRegistrar").addEventListener("click", async () => {
+  const nombre = document.getElementById("nombre").value.trim();
+  const sede   = document.getElementById("sede").value;
+
+  if (!nombre || !sede) {
+    setStatus("Completa nombre y sede antes de continuar.", "error");
+    return;
+  }
+
+  const btn = document.getElementById("btnRegistrar");
+  btn.disabled = true;
+  setStatus("Capturando rostro… mantente quieto.", "loading");
+
+  const descriptor = await capturarDescriptor();
+  if (!descriptor) { btn.disabled = false; return; }
+
+  setStatus("Enviando datos al servidor…", "loading");
+
+  try {
+    const res  = await fetch("/registrar-persona", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ nombre, sede, descriptors: [descriptor] })
+    });
+    const data = await res.json();
+    setStatus(data.msg, res.ok ? "success" : "error");
+  } catch {
+    setStatus("Error de conexión con el servidor.", "error");
+  }
+
+  btn.disabled = false;
+});
+
+/* ===== INIT ===== */
+window.addEventListener("load", async () => {
   await cargarModelos();
   await activarCamara();
   dibujarRostro();
 });
 
-// Registrar persona
-btnRegistrar.addEventListener("click",async()=>{
-  const nombre=document.getElementById("nombre").value.trim();
-  const sede=document.getElementById("sede").value;
-  if(!nombre||!sede){ mensaje.innerText="Completa todos los campos"; mensaje.style.color="red"; return; }
-  mensaje.innerText="Capturando rostro..."; mensaje.style.color="white";
-  const descriptorPromedio=await capturarDescriptor();
-  if(!descriptorPromedio) return;
-  const response=await fetch("/registrar-persona",{
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "Authorization":"Bearer "+token
-    },
-    body:JSON.stringify({nombre,sede,descriptors:[descriptorPromedio]})
-  });
-  const data=await response.json();
-  mensaje.innerText=data.msg;
-  mensaje.style.color=response.ok?"lightgreen":"red";
-});
-
-document.getElementById("year").textContent=new Date().getFullYear();
+document.getElementById("year").textContent = new Date().getFullYear();
 </script>
 </body>
 </html>
