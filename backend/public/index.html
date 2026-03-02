@@ -565,17 +565,17 @@ Powered by <span class="footer-brand">HOPD</span> &nbsp;·&nbsp; © <span id="ye
 document.addEventListener("DOMContentLoaded", async () => {
 
 /* ===== NAVBAR AUTH ===== */
+// ✅ Correcto — verifica token Y que sea admin
 const token = localStorage.getItem("token");
+if (!token) window.location.href = "login.html";
 
-document.getElementById("hamburger").addEventListener("click", () =>
-document.getElementById("navLinks").classList.toggle("show")
-);
-
-document.getElementById("logoutBtn").addEventListener("click", e => {
-e.preventDefault();
+try {
+const payload = JSON.parse(atob(token.split('.')[1]));
+  if (payload.role !== "admin") window.location.href = "index.html"; // o donde quieras redirigir al user
+} catch {
 localStorage.removeItem("token");
 window.location.href = "login.html";
-});
+}
 
 if (token) {
 document.getElementById("linkLogin").style.display   = "none";
