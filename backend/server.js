@@ -56,7 +56,6 @@ function verificarToken(req, res, next) {
 }
 
 function soloAdmin(req, res, next) {
-  // ✅ FIX: el JWT guarda el campo como "role" (ver login abajo)
   if (req.user.role !== "admin")
     return res.status(403).send({ msg: "Acceso solo admin" });
   next();
@@ -109,8 +108,7 @@ app.post("/login", (req, res) => {
     if (!user.activo)
       return res.status(403).send({ msg: "Usuario desactivado. Contacta al administrador." });
 
-    // ✅ FIX CLAVE: el campo en el JWT se llama "role" 
-    // Todos los frontends leen payload.role — esto debe coincidir
+
     const token = jwt.sign(
       { id: user.id, role: user.rol },
       process.env.JWT_SECRET || "clave_secreta",
@@ -122,7 +120,7 @@ app.post("/login", (req, res) => {
 });
 
 
-// CREAR USUARIO (endpoint legacy — mantener por compatibilidad)
+//crear usuario
 
 app.post("/crear-usuario", verificarToken, soloAdmin, async (req, res) => {
   const { username, password, rol } = req.body;
@@ -130,7 +128,6 @@ app.post("/crear-usuario", verificarToken, soloAdmin, async (req, res) => {
   if (!username || !password || !rol)
     return res.status(400).send({ msg: "Datos incompletos" });
 
-  // ✅ FIX: roles válidos alineados con el resto del sistema
   if (!["admin", "user"].includes(rol))
     return res.status(400).send({ msg: "Rol inválido" });
 
@@ -153,7 +150,7 @@ app.post("/crear-usuario", verificarToken, soloAdmin, async (req, res) => {
 });
 
 
-// CRUD USUARIOS
+
 
 app.get("/usuarios", verificarToken, soloAdmin, (req, res) => {
   db.query("SELECT id, username, rol, activo FROM usuarios", (err, rows) => {
@@ -162,7 +159,7 @@ app.get("/usuarios", verificarToken, soloAdmin, (req, res) => {
   });
 });
 
-//FIX
+
 app.post("/usuarios", verificarToken, soloAdmin, async (req, res) => {
   const { username, password, rol, activo } = req.body;
 
@@ -190,6 +187,8 @@ app.post("/usuarios", verificarToken, soloAdmin, async (req, res) => {
     );
   });
 });
+
+// CRUD USUARIOS
 
 app.put("/usuarios/:id", verificarToken, soloAdmin, async (req, res) => {
   const { username, rol, password } = req.body;
