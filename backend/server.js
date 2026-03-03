@@ -109,7 +109,7 @@ app.post("/login", (req, res) => {
     if (!user.activo)
       return res.status(403).send({ msg: "Usuario desactivado. Contacta al administrador." });
 
-    // ✅ FIX CLAVE: el campo en el JWT se llama "role" (no "rol")
+    // ✅ FIX CLAVE: el campo en el JWT se llama "role" 
     // Todos los frontends leen payload.role — esto debe coincidir
     const token = jwt.sign(
       { id: user.id, role: user.rol },
@@ -162,7 +162,7 @@ app.get("/usuarios", verificarToken, soloAdmin, (req, res) => {
   });
 });
 
-// ✅ FIX: usar db (callback) en vez de dbPromise para consistencia
+//FIX
 app.post("/usuarios", verificarToken, soloAdmin, async (req, res) => {
   const { username, password, rol, activo } = req.body;
 
