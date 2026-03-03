@@ -273,39 +273,42 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   /* ===== GUARD + NAVBAR AUTH ===== */
   const token = localStorage.getItem("token");
-  if (!token) {
-    window.location.replace("login.html");
-    return;
-  }
+if (!token) {
+  window.location.replace("login.html");
+  return;
+}
 
-  let role = null;
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
+let role = null;
+try {
+  const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+  const payload = JSON.parse(atob(base64));
 
-    // Verificar expiración localmente
-    if (payload.exp && Date.now() / 1000 > payload.exp) {
-      localStorage.removeItem("token");
-      window.location.replace("login.html");
-      return;
-    }
-
-    role = payload.role;
-
-    document.getElementById("linkLogin").style.display  = "none";
-    document.getElementById("linkLogout").style.display = "block";
-
-    if (role === "admin") {
-      document.getElementById("linkPanel").style.display    = "block";
-      document.getElementById("linkRegistro").style.display = "block";
-      document.getElementById("linkUsuarios").style.display = "block";
-    } else if (role === "user") {
-      document.getElementById("linkRegistro").style.display = "block";
-    }
-  } catch {
+  if (payload.exp && Date.now() / 1000 > payload.exp) {
     localStorage.removeItem("token");
     window.location.replace("login.html");
     return;
   }
+
+  role = payload.role;
+
+  document.getElementById("linkLogin").style.display  = "none";
+  document.getElementById("linkLogout").style.display = "block";
+
+  if (role === "admin") {
+    document.getElementById("linkPanel").style.display    = "block";
+    document.getElementById("linkRegistro").style.display = "block";
+    document.getElementById("linkUsuarios").style.display = "block";
+  } else if (role === "user") {
+    document.getElementById("linkRegistro").style.display = "block";
+  }
+} catch (e) {
+  console.error("Token inválido:", e); // ← agrega esto temporalmente para ver el error
+  localStorage.removeItem("token");
+  window.location.replace("login.html");
+  return;
+}
+
+  
 
   document.getElementById("logoutBtn").addEventListener("click", e => {
     e.preventDefault();
