@@ -15,7 +15,6 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // CONEXION MYSQL
-
 const db = mysql.createPool({
   host: process.env.DB_HOST || "crossover.proxy.rlwy.net",
   user: process.env.DB_USER || "root",
@@ -36,7 +35,8 @@ db.getConnection((err, conn) => {
   }
 });
 
-module.exports = db.promise();
+// ⚠️ IMPORTANTE: usamos db.promise() para los endpoints que usan async/await
+const dbPromise = db.promise();
 
 
 // MIDDLEWARE JWT
@@ -56,6 +56,7 @@ function verificarToken(req, res, next) {
 }
 
 function soloAdmin(req, res, next) {
+  // ✅ FIX: el JWT guarda el campo como "role" (ver login abajo)
   if (req.user.role !== "admin")
     return res.status(403).send({ msg: "Acceso solo admin" });
   next();
@@ -89,7 +90,6 @@ const FACE_THRESHOLD = 0.45;
 
 // LOGIN
 
-
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
 
@@ -106,10 +106,11 @@ app.post("/login", (req, res) => {
     if (!match)
       return res.status(400).send({ msg: "Contraseña incorrecta" });
 
-    // verificar que el usuario esté activo
     if (!user.activo)
       return res.status(403).send({ msg: "Usuario desactivado. Contacta al administrador." });
 
+    // ✅ FIX CLAVE: el campo en el JWT se llama "role" (no "rol")
+    // Todos los frontends leen payload.role — esto debe coincidir
     const token = jwt.sign(
       { id: user.id, role: user.rol },
       process.env.JWT_SECRET || "clave_secreta",
@@ -121,8 +122,7 @@ app.post("/login", (req, res) => {
 });
 
 
-// CREAR USUARIO
-
+// CREAR USUARIO (endpoint legacy — mantener por compatibilidad)
 
 app.post("/crear-usuario", verificarToken, soloAdmin, async (req, res) => {
   const { username, password, rol } = req.body;
@@ -130,10 +130,12 @@ app.post("/crear-usuario", verificarToken, soloAdmin, async (req, res) => {
   if (!username || !password || !rol)
     return res.status(400).send({ msg: "Datos incompletos" });
 
-  if (!["admin", "operador", "visor"].includes(rol))
+  // ✅ FIX: roles válidos alineados con el resto del sistema
+  if (!["admin", "user"].includes(rol))
     return res.status(400).send({ msg: "Rol inválido" });
 
   db.query("SELECT id FROM usuarios WHERE username=?", [username], async (err, rows) => {
+    if (err) return res.status(500).send({ msg: "Error BD" });
     if (rows.length > 0)
       return res.status(400).send({ msg: "Usuario ya existe" });
 
@@ -150,12 +152,45 @@ app.post("/crear-usuario", verificarToken, soloAdmin, async (req, res) => {
   });
 });
 
+
+// CRUD USUARIOS
+
 app.get("/usuarios", verificarToken, soloAdmin, (req, res) => {
-  db.query("SELECT id, username, rol , activo FROM usuarios", (err, rows) => {
+  db.query("SELECT id, username, rol, activo FROM usuarios", (err, rows) => {
     if (err) return res.status(500).send([]);
     res.send(rows);
   });
 });
+
+// ✅ FIX: usar db (callback) en vez de dbPromise para consistencia
+app.post("/usuarios", verificarToken, soloAdmin, async (req, res) => {
+  const { username, password, rol, activo } = req.body;
+
+  if (!username || !password || !rol) {
+    return res.status(400).json({ msg: "Completa todos los campos" });
+  }
+
+  if (!["admin", "user"].includes(rol)) {
+    return res.status(400).json({ msg: "Rol inválido" });
+  }
+
+  db.query("SELECT id FROM usuarios WHERE username = ?", [username], async (err, rows) => {
+    if (err) return res.status(500).json({ msg: "Error BD" });
+    if (rows.length > 0) return res.status(400).json({ msg: "Usuario ya existe" });
+
+    const hash = await bcrypt.hash(password, 10);
+
+    db.query(
+      "INSERT INTO usuarios (username, password, rol, activo, creado_en) VALUES (?, ?, ?, ?, NOW())",
+      [username, hash, rol, activo ? 1 : 0],
+      err2 => {
+        if (err2) return res.status(500).json({ msg: "Error guardando usuario" });
+        res.json({ msg: "Usuario creado correctamente ✅" });
+      }
+    );
+  });
+});
+
 app.put("/usuarios/:id", verificarToken, soloAdmin, async (req, res) => {
   const { username, rol, password } = req.body;
   if (!username || !rol) return res.status(400).json({ msg: "Datos incompletos" });
@@ -174,12 +209,14 @@ app.put("/usuarios/:id", verificarToken, soloAdmin, async (req, res) => {
     res.json({ ok: true });
   });
 });
+
 app.delete("/usuarios/:id", verificarToken, soloAdmin, (req, res) => {
   db.query("DELETE FROM usuarios WHERE id=?", [req.params.id], err => {
     if (err) return res.status(500).json({ ok: false });
     res.json({ ok: true });
   });
 });
+
 app.post("/usuarios/:id/toggle", verificarToken, soloAdmin, (req, res) => {
   db.query("UPDATE usuarios SET activo = NOT activo WHERE id=?", [req.params.id], err => {
     if (err) return res.status(500).json({ ok: false });
@@ -187,8 +224,8 @@ app.post("/usuarios/:id/toggle", verificarToken, soloAdmin, (req, res) => {
   });
 });
 
-// REGISTRAR PERSONA
 
+// REGISTRAR PERSONA
 
 app.post("/registrar-persona", verificarToken, soloAdminOOperador, (req, res) => {
   const { nombre, sede, descriptors } = req.body;
@@ -222,7 +259,6 @@ app.post("/registrar-persona", verificarToken, soloAdminOOperador, (req, res) =>
           err3 => {
             if (err3)
               return res.status(500).send({ msg: "Error guardando descriptores" });
-
             res.send({ msg: "Persona registrada correctamente ✅" });
           }
         );
@@ -232,8 +268,7 @@ app.post("/registrar-persona", verificarToken, soloAdminOOperador, (req, res) =>
 });
 
 
-// RECONOCER 
-
+// RECONOCER
 
 app.post("/reconocer", (req, res) => {
   console.time("Reconocer");
@@ -328,7 +363,6 @@ app.post("/reconocer", (req, res) => {
 
 // PERSONAS
 
-
 app.get("/personas", verificarToken, (req, res) => {
   db.query("SELECT id, nombre, sede, activo FROM personas", (err, rows) => {
     if (err) return res.status(500).send([]);
@@ -363,49 +397,12 @@ app.delete("/personas/:id", verificarToken, soloAdmin, (req, res) => {
     });
   });
 });
-// Crear usuario
-app.post("/usuarios", verificarToken, soloAdmin, async (req, res) => {
-  const { username, password, rol, activo } = req.body;
 
-  if (!username || !password || !rol) {
-    return res.status(400).json({ msg: "Completa todos los campos" });
-  }
 
-  if (!["admin","user"].includes(rol)) {
-    return res.status(400).json({ msg: "Rol inválido" });
-  }
+// ASISTENCIAS
 
-  try {
-    // Usamos el pool que ya definiste
-    db.query(
-      "SELECT * FROM usuarios WHERE username = ?",
-      [username],
-      async (err, rows) => {
-        if (err) return res.status(500).json({ msg: "Error BD" });
-        if (rows.length > 0) return res.status(400).json({ msg: "Usuario ya existe" });
-
-        const hash = await bcrypt.hash(password, 10);
-
-        db.query(
-          "INSERT INTO usuarios (username, password, rol, activo, creado_en) VALUES (?, ?, ?, ?, NOW())",
-          [username, hash, rol, activo ? 1 : 0],
-          err2 => {
-            if (err2) return res.status(500).json({ msg: "Error guardando usuario" });
-            res.json({ msg: "Usuario creado correctamente ✅" });
-          }
-        );
-      }
-    );
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ msg: "Error del servidor" });
-  }
-});
-
-// ----------------- ASISTENCIAS -----------------
 app.get("/asistencias", verificarToken, soloAdmin, (req, res) => {
-  const { fecha, busqueda,tipo } = req.query;
+  const { fecha, busqueda, tipo } = req.query;
 
   let sql = `
     SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
@@ -415,35 +412,26 @@ app.get("/asistencias", verificarToken, soloAdmin, (req, res) => {
   `;
   const params = [];
 
-  if (fecha) {
-    sql += " AND DATE(r.fecha_hora) = ?";
-    params.push(fecha);
-  }
-
+  if (fecha) { sql += " AND DATE(r.fecha_hora) = ?"; params.push(fecha); }
   if (busqueda) {
     sql += " AND (LOWER(p.nombre) LIKE ? OR LOWER(p.sede) LIKE ?)";
     params.push(`%${busqueda.toLowerCase()}%`, `%${busqueda.toLowerCase()}%`);
   }
+  if (tipo) { sql += " AND r.tipo = ?"; params.push(tipo); }
 
-  if (tipo) {
-  sql += " AND r.tipo = ?";   // r.tipo viene de la tabla registros
-  params.push(tipo);
-}
-  
   sql += " ORDER BY r.fecha_hora DESC LIMIT 500";
 
   db.query(sql, params, (err, rows) => {
-    if (err) {
-      console.error("Error obteniendo registros:", err);
-      return res.status(500).json([]);
-    }
+    if (err) { console.error("Error obteniendo registros:", err); return res.status(500).json([]); }
     res.json(rows);
   });
 });
 
-// ----------------- EXPORTAR EXCEL -----------------
+
+// EXPORTAR EXCEL
+
 app.get("/exportar-registros", verificarToken, soloAdminOOperador, async (req, res) => {
-  const { fecha, busqueda,tipo } = req.query;
+  const { fecha, busqueda, tipo } = req.query;
 
   let sql = `
     SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
@@ -453,28 +441,17 @@ app.get("/exportar-registros", verificarToken, soloAdminOOperador, async (req, r
   `;
   const params = [];
 
-  if (fecha) {
-    sql += " AND DATE(r.fecha_hora) = ?";
-    params.push(fecha);
-  }
-
+  if (fecha) { sql += " AND DATE(r.fecha_hora) = ?"; params.push(fecha); }
   if (busqueda) {
     sql += " AND (LOWER(p.nombre) LIKE ? OR LOWER(p.sede) LIKE ?)";
     params.push(`%${busqueda.toLowerCase()}%`, `%${busqueda.toLowerCase()}%`);
   }
-
-  if (tipo) {
-  sql += " AND r.tipo = ?";
-  params.push(tipo);
-}
+  if (tipo) { sql += " AND r.tipo = ?"; params.push(tipo); }
 
   sql += " ORDER BY r.fecha_hora DESC";
 
   db.query(sql, params, async (err, rows) => {
-    if (err) {
-      console.error("Error exportando registros:", err);
-      return res.status(500).json({ msg: "Error generando Excel" });
-    }
+    if (err) return res.status(500).json({ msg: "Error generando Excel" });
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Registros");
@@ -488,10 +465,7 @@ app.get("/exportar-registros", verificarToken, soloAdminOOperador, async (req, r
 
     rows.forEach(r => sheet.addRow(r));
 
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=registros.xlsx");
 
     await workbook.xlsx.write(res);
@@ -500,9 +474,7 @@ app.get("/exportar-registros", verificarToken, soloAdminOOperador, async (req, r
 });
 
 
-
 // SERVIDOR
-
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public/login.html"));

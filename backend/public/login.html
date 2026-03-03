@@ -25,335 +25,161 @@
   --radius: 14px;
   --shadow: 0 8px 40px rgba(0,0,0,0.5);
 }
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
-
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-body);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow-x: hidden;
+  background: var(--bg); color: var(--text); font-family: var(--font-body);
+  min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden;
 }
-
 body::before {
-  content: '';
-  position: fixed; inset: 0;
+  content: ''; position: fixed; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
   pointer-events: none; z-index: 0;
 }
-
-/* ===== NAVBAR ===== */
 .navbar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 0 28px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 0 28px; height: 64px; display: flex; align-items: center;
+  justify-content: space-between; position: sticky; top: 0; z-index: 100;
   backdrop-filter: blur(12px);
 }
-
 .brand {
-  font-family: var(--font-mono);
-  color: var(--accent);
-  font-size: 0.95rem;
-  letter-spacing: 2px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
+  font-family: var(--font-mono); color: var(--accent); font-size: 0.95rem;
+  letter-spacing: 2px; display: flex; align-items: center; gap: 10px; text-decoration: none;
 }
-
 .brand-dot {
-  width: 8px; height: 8px;
-  background: var(--accent);
-  border-radius: 50%;
-  box-shadow: 0 0 10px var(--accent);
-  animation: pulse 2s ease-in-out infinite;
+  width: 8px; height: 8px; background: var(--accent); border-radius: 50%;
+  box-shadow: 0 0 10px var(--accent); animation: pulse 2s ease-in-out infinite;
 }
-
 @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
-
-.nav-links {
-  list-style: none;
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
+.nav-links { list-style: none; display: flex; gap: 4px; align-items: center; }
 .nav-links a {
-  color: var(--muted);
-  text-decoration: none;
-  font-size: 0.83rem;
-  font-weight: 500;
-  padding: 6px 14px;
-  border-radius: 8px;
-  transition: all 0.2s;
+  color: var(--muted); text-decoration: none; font-size: 0.83rem; font-weight: 500;
+  padding: 6px 14px; border-radius: 8px; transition: all 0.2s;
 }
-
 .nav-links a:hover { color: var(--text); background: var(--surface2); }
 .nav-links .danger a { color: var(--danger); }
 .nav-links .danger a:hover { background: rgba(239,68,68,0.1); }
-
-.hamburger {
-  display: none;
-  flex-direction: column;
-  gap: 5px;
-  cursor: pointer;
-  padding: 4px;
-}
-
+.hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; }
 .hamburger div { width: 22px; height: 2px; background: var(--muted); border-radius: 2px; }
-
 @media (max-width: 680px) {
   .hamburger { display: flex; }
   .nav-links {
     display: none; flex-direction: column; gap: 0;
     position: absolute; top: 64px; right: 16px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 8px;
-    min-width: 180px;
-    box-shadow: var(--shadow);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px; min-width: 180px; box-shadow: var(--shadow);
   }
   .nav-links.show { display: flex; }
   .nav-links a { padding: 10px 14px; }
 }
-
-/* ===== MAIN ===== */
 main {
-  flex: 1;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 48px 20px;
-  position: relative;
-  z-index: 1;
+  flex: 1; display: flex; align-items: flex-start; justify-content: center;
+  padding: 48px 20px; position: relative; z-index: 1;
 }
-
 main::before {
-  content: '';
-  position: fixed;
-  top: 30%; left: 50%;
-  transform: translate(-50%, -50%);
+  content: ''; position: fixed; top: 30%; left: 50%; transform: translate(-50%, -50%);
   width: 500px; height: 500px;
   background: radial-gradient(circle, rgba(0,200,180,0.04) 0%, transparent 70%);
   pointer-events: none;
 }
-
-/* ===== CARD ===== */
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  width: 100%;
-  max-width: 400px;
-  box-shadow: var(--shadow);
-  overflow: hidden;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  width: 100%; max-width: 400px; box-shadow: var(--shadow); overflow: hidden;
   animation: fadeUp 0.5s ease both;
 }
-
 @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-
-.card-header {
-  padding: 24px 28px 20px;
-  border-bottom: 1px solid var(--border);
-}
-
+.card-header { padding: 24px 28px 20px; border-bottom: 1px solid var(--border); }
 .card-eyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 3px;
-  color: var(--accent);
-  text-transform: uppercase;
-  margin-bottom: 6px;
+  font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 3px;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 6px;
 }
-
-.card-title {
-  font-family: var(--font-mono);
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text);
-}
-
+.card-title { font-family: var(--font-mono); font-size: 1.25rem; font-weight: 700; color: var(--text); }
 .card-body { padding: 28px; }
-
-/* ===== FIELDS ===== */
 .field { margin-bottom: 18px; }
-
 .field label {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 2px;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 7px;
+  display: block; font-family: var(--font-mono); font-size: 0.68rem;
+  letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 7px;
 }
-
 .field input {
-  width: 100%;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 9px;
-  padding: 11px 15px;
-  font-size: 0.9rem;
-  font-family: var(--font-body);
-  outline: none;
-  transition: border-color 0.2s, background 0.2s;
+  width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 9px; padding: 11px 15px; font-size: 0.9rem; font-family: var(--font-body);
+  outline: none; transition: border-color 0.2s, background 0.2s;
 }
-
-.field input:focus {
-  border-color: var(--accent);
-  background: var(--surface3);
-}
-
+.field input:focus { border-color: var(--accent); background: var(--surface3); }
 .field input::placeholder { color: var(--muted); }
-
-/* password toggle */
 .input-wrap { position: relative; }
 .input-wrap input { padding-right: 44px; }
 .toggle-pw {
-  position: absolute;
-  right: 12px; top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 1rem;
-  padding: 0;
-  line-height: 1;
-  transition: color 0.2s;
-  width: auto;
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 1rem; padding: 0; line-height: 1; transition: color 0.2s; width: auto;
 }
 .toggle-pw:hover { color: var(--accent); }
-
-/* ===== BUTTON ===== */
 .btn-primary {
-  width: 100%;
-  background: var(--accent-dim);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  padding: 12px;
-  border-radius: 9px;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  letter-spacing: 1px;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 6px;
+  width: 100%; background: var(--accent-dim); border: 1px solid var(--accent);
+  color: var(--accent); padding: 12px; border-radius: 9px; font-family: var(--font-mono);
+  font-size: 0.85rem; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; margin-top: 6px;
 }
-
 .btn-primary:hover:not(:disabled) { background: var(--accent); color: #000; }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-
-/* ===== STATUS ===== */
 .status-bar {
-  display: none;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 15px;
-  border-radius: 9px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  font-size: 0.82rem;
-  color: var(--muted);
-  margin-top: 14px;
+  display: none; align-items: center; gap: 10px; padding: 11px 15px; border-radius: 9px;
+  background: var(--surface2); border: 1px solid var(--border); font-size: 0.82rem;
+  color: var(--muted); margin-top: 14px;
 }
-
 .status-bar.visible { display: flex; }
 .status-bar.success { border-color: rgba(16,185,129,0.4); color: #34d399; background: rgba(16,185,129,0.07); }
 .status-bar.error   { border-color: rgba(239,68,68,0.4);  color: #f87171; background: rgba(239,68,68,0.07); }
 .status-bar.loading { border-color: rgba(0,200,180,0.4);  color: var(--accent); background: var(--accent-dim); }
-
-.status-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: currentColor;
-}
-
+.status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: currentColor; }
 .status-bar.loading .status-dot { animation: pulse 1s infinite; }
-
-/* ===== FOOTER ===== */
 footer {
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding: 18px;
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--muted);
-  position: relative;
-  z-index: 1;
+  background: var(--surface); border-top: 1px solid var(--border); padding: 18px;
+  text-align: center; font-family: var(--font-mono); font-size: 0.72rem;
+  color: var(--muted); position: relative; z-index: 1;
 }
-
-.footer-brand {
-  color: var(--accent);
-  letter-spacing: 3px;
-  text-shadow: 0 0 10px rgba(0,200,180,0.5);
-}
+.footer-brand { color: var(--accent); letter-spacing: 3px; text-shadow: 0 0 10px rgba(0,200,180,0.5); }
 </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
 <nav class="navbar">
-  <a class="brand" href="index.html">
+  <a class="brand" href="login.html">
     <div class="brand-dot"></div>
     CONTROL BIOMÉTRICO
   </a>
   <div class="hamburger" id="hamburger"><div></div><div></div><div></div></div>
   <ul class="nav-links" id="navLinks">
     <li id="linkLogin"><a href="login.html">Login</a></li>
-    <li id="linkIndex" style="display:none"><a href="index.html">Inicio</a></li>
-    <li id="linkPanel" style="display:none"><a href="admin.html">Panel Admin</a></li>
+    <li id="linkIndex"  style="display:none"><a href="index.html">Inicio</a></li>
+    <li id="linkPanel"  style="display:none"><a href="admin.html">Panel Admin</a></li>
     <li id="linkRegistro" style="display:none"><a href="registro.html">Registrar</a></li>
     <li id="linkLogout" class="danger" style="display:none"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
   </ul>
 </nav>
 
-<!-- MAIN -->
 <main>
   <div class="card">
-
     <div class="card-header">
       <div class="card-eyebrow">Autenticación</div>
       <div class="card-title">Acceso al sistema</div>
     </div>
-
     <div class="card-body">
-
       <div class="field">
         <label>Usuario</label>
         <input type="text" id="username" placeholder="Nombre de usuario" autocomplete="off" />
       </div>
-
       <div class="field">
         <label>Contraseña</label>
         <div class="input-wrap">
           <input type="password" id="password" placeholder="Contraseña" />
-          <button class="toggle-pw" id="togglePw" type="button" title="Mostrar/ocultar">👁</button>
+          <button class="toggle-pw" id="togglePw" type="button">👁</button>
         </div>
       </div>
-
       <button class="btn-primary" id="btnLogin" type="button">Iniciar Sesión</button>
-
       <div class="status-bar" id="statusBar">
         <div class="status-dot"></div>
         <span id="statusTexto"></span>
       </div>
-
     </div>
   </div>
 </main>
@@ -365,30 +191,65 @@ footer {
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
 
-/* ===== STATUS ===== */
+// ✅ FIX: helper de estado
 function setStatus(msg, type) {
   const bar = document.getElementById("statusBar");
   bar.className = `status-bar visible ${type}`;
   document.getElementById("statusTexto").textContent = msg;
 }
 
-/* ===== REDIRECT IF ALREADY LOGGED IN ===== */
-if (localStorage.getItem("token")) {
-  window.location.href = "index.html";
+// ✅ FIX: no redirigir automáticamente en login.html para evitar el bucle
+// Solo actualizamos la navbar si hay sesión activa
+const token = localStorage.getItem("token");
+
+if (token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const role = payload.role;
+
+    document.getElementById("linkLogin").style.display   = "none";
+    document.getElementById("linkLogout").style.display  = "block";
+    document.getElementById("linkIndex").style.display   = "block";
+
+    if (role === "admin") {
+      document.getElementById("linkPanel").style.display    = "block";
+      document.getElementById("linkRegistro").style.display = "block";
+    } else if (role === "user") {
+      document.getElementById("linkRegistro").style.display = "block";
+    }
+  } catch {
+    // token corrupto → limpiar
+    localStorage.removeItem("token");
+  }
 }
 
-/* ===== HAMBURGER ===== */
+// Hamburger
 document.getElementById("hamburger").addEventListener("click", () =>
   document.getElementById("navLinks").classList.toggle("show")
 );
 
-/* ===== TOGGLE PASSWORD ===== */
+// Logout
+document.getElementById("logoutBtn").addEventListener("click", e => {
+  e.preventDefault();
+  localStorage.removeItem("token");
+  window.location.href = "login.html";
+});
+
+// Toggle password
 document.getElementById("togglePw").addEventListener("click", () => {
   const input = document.getElementById("password");
   input.type = input.type === "password" ? "text" : "password";
 });
 
-/* ===== LOGIN ===== */
+// Enter para login
+document.getElementById("password").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("btnLogin").click();
+});
+document.getElementById("username").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("btnLogin").click();
+});
+
+// ✅ LOGIN — sin DOMContentLoaded anidado
 document.getElementById("btnLogin").addEventListener("click", async () => {
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value.trim();
@@ -410,9 +271,8 @@ document.getElementById("btnLogin").addEventListener("click", async () => {
     });
 
     let data;
-    try {
-      data = await res.json();
-    } catch {
+    try { data = await res.json(); }
+    catch {
       setStatus("Error en la comunicación con el servidor.", "error");
       btn.disabled = false;
       return;
@@ -421,7 +281,10 @@ document.getElementById("btnLogin").addEventListener("click", async () => {
     if (res.ok) {
       localStorage.setItem("token", data.token);
       setStatus("Acceso concedido. Redirigiendo…", "success");
-      setTimeout(() => window.location.href = "index.html", 800);
+      // ✅ Redirigir según rol
+      setTimeout(() => {
+        window.location.href = "index.html";
+      }, 800);
     } else {
       setStatus(data.msg || "Usuario o contraseña incorrectos.", "error");
       btn.disabled = false;
@@ -432,31 +295,6 @@ document.getElementById("btnLogin").addEventListener("click", async () => {
     btn.disabled = false;
   }
 });
-
-/* ===== NAVBAR CONTROL ===== */
-document.addEventListener("DOMContentLoaded", () => {
-  const token = localStorage.getItem("token");
-
-  if (token) {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      document.getElementById("linkLogin").style.display   = "none";
-      document.getElementById("linkLogout").style.display  = "block";
-      document.getElementById("linkIndex").style.display   = "block";
-      if (payload.role === "admin") {
-        document.getElementById("linkPanel").style.display   = "block";
-        document.getElementById("linkRegistro").style.display = "block";
-      }
-    } catch { localStorage.removeItem("token"); }
-  }
-
-  document.getElementById("logoutBtn").addEventListener("click", e => {
-    e.preventDefault();
-    localStorage.removeItem("token");
-    window.location.href = "login.html";
-  });
-});
 </script>
-
 </body>
 </html>
