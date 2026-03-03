@@ -149,8 +149,8 @@ footer {
   </a>
   <div class="hamburger" id="hamburger"><div></div><div></div><div></div></div>
   <ul class="nav-links" id="navLinks">
-    <li id="linkLogin"><a href="login.html">Login</a></li>
-    <li id="linkIndex"  style="display:none"><a href="index.html">Inicio</a></li>
+    <li><a href="index.html">Inicio</a></li>
+    
     <li id="linkPanel"  style="display:none"><a href="admin.html">Panel Admin</a></li>
     <li id="linkRegistro" style="display:none"><a href="registro.html">Registrar</a></li>
     <li id="linkLogout" class="danger" style="display:none"><a href="#" id="logoutBtn">Cerrar sesión</a></li>
@@ -179,6 +179,7 @@ footer {
       <div class="status-bar" id="statusBar">
         <div class="status-dot"></div>
         <span id="statusTexto"></span>
+        
       </div>
     </div>
   </div>
@@ -198,7 +199,6 @@ function setStatus(msg, type) {
   document.getElementById("statusTexto").textContent = msg;
 }
 
-// ✅ FIX: no redirigir automáticamente en login.html para evitar el bucle
 // Solo actualizamos la navbar si hay sesión activa
 const token = localStorage.getItem("token");
 
@@ -223,7 +223,7 @@ if (token) {
   }
 }
 
-// Hamburger
+
 document.getElementById("hamburger").addEventListener("click", () =>
   document.getElementById("navLinks").classList.toggle("show")
 );
