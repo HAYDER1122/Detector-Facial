@@ -266,13 +266,11 @@ footer {
 
 <script src="/js/face-api.min.js"></script>
 <script>
-// ✅ FIX PRINCIPAL: un solo DOMContentLoaded, sin anidamiento
 document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("year").textContent = new Date().getFullYear();
 
   /* ===== NAVBAR AUTH ===== */
-  // ✅ FIX: leer SIEMPRE como payload.role (el servidor firma con "role")
   const token = localStorage.getItem("token");
   let role = null;
 
@@ -361,9 +359,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function cerrarCamara() {
+    if (intervalDetect) clearInterval(intervalDetect);
+    intervalDetect = null;
     if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
     video.srcObject = null;
-    if (intervalDetect) clearInterval(intervalDetect);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     camBadge.textContent = "INACTIVA";
     camBadge.classList.add("inactive");
@@ -407,12 +406,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     setTimeout(() => {
       overlayFull.classList.remove("visible");
-      if (ok) {
-        tipoSeleccionado = "";
-        selectTipo.value = "";
-        cerrarCamara();
-        setStatus("Esperando acción…");
-      }
+      // En ambos casos (ok o error) resetear selección
+      tipoSeleccionado = "";
+      selectTipo.value = "";
+      setStatus("Esperando acción…");
     }, 3000);
   }
 
@@ -434,10 +431,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    // ✅ Rostro detectado: cerrar cámara inmediatamente antes de consultar al servidor
+    cerrarCamara();
+
     const resized = faceapi.resizeResults(det, { width: canvas.width, height: canvas.height });
     const box = resized.detection.box;
 
-    // ✅ FIX: enviar token si existe (para endpoints protegidos)
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -468,24 +467,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       nombre = "Error de conexión";
       sonidoError.play().catch(() => {});
       setStatus("Error de conexión con el servidor.", "error");
+      showOverlay(nombre, false);
     }
-
-    ctx.strokeStyle = "#00c8b4";
-    ctx.lineWidth   = 2;
-    ctx.shadowColor = "#00c8b4";
-    ctx.shadowBlur  = 14;
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(box.x, box.y, box.width, box.height, 8);
-    else ctx.rect(box.x, box.y, box.width, box.height);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    ctx.font      = "13px 'Space Mono', monospace";
-    ctx.fillStyle = "#00c8b4";
-    ctx.textAlign = "center";
-    ctx.fillText(nombre, box.x + box.width / 2, box.y - 8);
-
-    faceapi.draw.drawFaceLandmarks(canvas, resized);
 
     procesando = false;
   }
