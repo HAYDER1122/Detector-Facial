@@ -346,7 +346,6 @@ app.post("/reconocer", (req, res) => {
           err3 => {
             console.timeEnd("Reconocer");
             if (err3) return res.status(500).send({ ok: false });
-
             res.send({
               ok: true,
               nombre: personaCoincidente.nombre,

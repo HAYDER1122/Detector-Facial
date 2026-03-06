@@ -37,7 +37,6 @@ body {
   overflow-x: hidden;
 }
 
-/* noise */
 body::before {
   content:'';
   position:fixed; inset:0;
@@ -132,7 +131,6 @@ main {
   z-index: 1;
 }
 
-/* glow blob */
 main::before {
   content:'';
   position:fixed;
@@ -179,6 +177,16 @@ main::before {
 
 .card-body { padding: 24px 28px; }
 
+/* ===== ACCESO DENEGADO ===== */
+.denied {
+  text-align: center;
+  padding: 40px 28px;
+}
+
+.denied-icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.5; }
+.denied-title { font-family: var(--font-mono); font-size: 0.9rem; color: var(--danger); margin-bottom: 8px; }
+.denied-sub { font-size: 0.83rem; color: var(--muted); }
+
 /* ===== FORM ===== */
 .field { margin-bottom: 16px; }
 
@@ -216,7 +224,6 @@ main::before {
 .field input::placeholder { color: var(--muted); }
 .field select option { background: var(--surface2); }
 
-/* select arrow */
 .select-wrap { position: relative; }
 .select-wrap::after {
   content: '▾';
@@ -243,15 +250,8 @@ main::before {
   margin-top: 4px;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent);
-  color: #000;
-}
-
-.btn-primary:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+.btn-primary:hover:not(:disabled) { background: var(--accent); color: #000; }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ===== STATUS MSG ===== */
 .status-bar {
@@ -280,24 +280,12 @@ main::before {
   background: currentColor;
 }
 
-.status-bar.loading .status-dot-msg {
-  animation: pulse 1s infinite;
-}
+.status-bar.loading .status-dot-msg { animation: pulse 1s infinite; }
 
-/* ===== DIVIDER ===== */
-.divider {
-  border: none;
-  border-top: 1px solid var(--border);
-  margin: 20px 0;
-}
+.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 
 /* ===== VIDEO AREA ===== */
-.video-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-}
+.video-section { display: flex; flex-direction: column; align-items: center; gap: 0; }
 
 .video-label {
   font-family: var(--font-mono);
@@ -331,7 +319,6 @@ main::before {
   object-fit: cover;
 }
 
-/* scan line animation */
 .video-wrap::after {
   content: '';
   position: absolute;
@@ -352,7 +339,6 @@ main::before {
   100% { top: 100%; opacity: 0; }
 }
 
-/* corner brackets */
 .corner { position: absolute; width: 18px; height: 18px; z-index: 4; }
 .corner-tl { top:10px; left:10px; border-top:2px solid var(--accent); border-left:2px solid var(--accent); }
 .corner-tr { top:10px; right:10px; border-top:2px solid var(--accent); border-right:2px solid var(--accent); }
@@ -405,7 +391,7 @@ footer {
       <div class="card-title">Registrar Persona</div>
     </div>
 
-    <div class="card-body">
+    <div class="card-body" id="cardBody">
 
       <!-- FORM -->
       <div class="field">
@@ -457,28 +443,31 @@ footer {
 
 <script src="/js/face-api.min.js"></script>
 <script>
-/* ===== AUTH ===== */
+document.getElementById("year").textContent = new Date().getFullYear();
+
+/* ===== HELPERS ===== */
+function showDenied(msg) {
+  document.getElementById("cardBody").innerHTML = `
+    <div class="denied">
+      <div class="denied-icon">🔒</div>
+      <div class="denied-title">Acceso restringido</div>
+      <div class="denied-sub">${msg}</div>
+    </div>`;
+}
+
+function setStatus(msg, type = "loading") {
+  const bar = document.getElementById("mensaje");
+  if (!bar) return;
+  bar.className = `status-bar ${type}`;
+  document.getElementById("mensajeTexto").textContent = msg;
+}
+
+/* ===== AUTH + NAVBAR ===== */
 const token = localStorage.getItem("token");
-if (!token) window.location.href = "login.html";
 
-let role = null;
-try {
-  const payload = JSON.parse(atob(token.split('.')[1]));
-  role = payload.role;
-  if (role !== "admin" && role !== "user") throw new Error();
-} catch {
-  localStorage.removeItem("token");
-  window.location.href = "login.html";
-}
-
-/* ===== NAVBAR DINÁMICO ===== */
-document.getElementById("linkLogin").style.display   = "none";
-document.getElementById("linkLogout").style.display  = "block";
-document.getElementById("linkIndex").style.display   = "block";
-if (role === "admin") {
-  document.getElementById("linkPanel").style.display    = "block";
-  document.getElementById("linkUsuarios").style.display = "block";
-}
+document.getElementById("hamburger").addEventListener("click", () =>
+  document.getElementById("navLinks").classList.toggle("show")
+);
 
 document.getElementById("logoutBtn").addEventListener("click", e => {
   e.preventDefault();
@@ -486,21 +475,43 @@ document.getElementById("logoutBtn").addEventListener("click", e => {
   window.location.href = "login.html";
 });
 
-document.getElementById("hamburger").addEventListener("click", () =>
-  document.getElementById("navLinks").classList.toggle("show")
-);
+let role = null;
 
-/* ===== STATUS HELPER ===== */
-function setStatus(msg, type = "loading") {
-  const bar = document.getElementById("mensaje");
-  bar.className = `status-bar ${type}`;
-  document.getElementById("mensajeTexto").textContent = msg;
+if (!token) {
+  showDenied("Debes iniciar sesión para acceder.");
+} else {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    role = payload.role;
+
+    if (role !== "admin" && role !== "user") throw new Error();
+
+    document.getElementById("linkLogin").style.display   = "none";
+    document.getElementById("linkLogout").style.display  = "block";
+    document.getElementById("linkIndex").style.display   = "block";
+
+    if (role === "admin") {
+      document.getElementById("linkPanel").style.display    = "block";
+      document.getElementById("linkUsuarios").style.display = "block";
+    }
+
+    /* ===== INIT FACE API (solo si hay sesión) ===== */
+    window.addEventListener("load", async () => {
+      await cargarModelos();
+      await activarCamara();
+      dibujarRostro();
+    });
+
+  } catch {
+    localStorage.removeItem("token");
+    showDenied("Sesión inválida. Por favor inicia sesión de nuevo.");
+  }
 }
 
 /* ===== VIDEO & FACE API ===== */
 const video  = document.getElementById("video");
 const canvas = document.getElementById("canvas");
-const ctx    = canvas.getContext("2d");
+const ctx    = canvas ? canvas.getContext("2d") : null;
 
 async function cargarModelos() {
   setStatus("Cargando modelos de reconocimiento…", "loading");
@@ -535,6 +546,7 @@ async function capturarDescriptor() {
 }
 
 function dibujarRostro() {
+  if (!canvas || !ctx) return;
   canvas.width  = video.videoWidth  || 640;
   canvas.height = video.videoHeight || 480;
   const displaySize = { width: canvas.width, height: canvas.height };
@@ -563,7 +575,7 @@ function dibujarRostro() {
 }
 
 /* ===== REGISTRAR ===== */
-document.getElementById("btnRegistrar").addEventListener("click", async () => {
+document.getElementById("btnRegistrar")?.addEventListener("click", async () => {
   const nombre = document.getElementById("nombre").value.trim();
   const sede   = document.getElementById("sede").value;
 
@@ -595,15 +607,6 @@ document.getElementById("btnRegistrar").addEventListener("click", async () => {
 
   btn.disabled = false;
 });
-
-/* ===== INIT ===== */
-window.addEventListener("load", async () => {
-  await cargarModelos();
-  await activarCamara();
-  dibujarRostro();
-});
-
-document.getElementById("year").textContent = new Date().getFullYear();
 </script>
 </body>
 </html>

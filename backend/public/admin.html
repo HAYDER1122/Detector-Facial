@@ -21,6 +21,8 @@
   --accent-dim: rgba(0,200,180,0.15);
   --text: #e8edf5;
   --muted: #5a6a82;
+  --danger: #ef4444;
+  --success: #10b981;
   --entrada: #0066ff;
   --salida: #ef4444;
   --desc-sal: #f59e0b;
@@ -97,6 +99,71 @@ body::before {
 .nav-link.danger { color: var(--salida) !important; }
 .nav-link.danger:hover { background: rgba(239,68,68,0.1) !important; }
 
+/* ===== DENIED OVERLAY ===== */
+.denied-overlay {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.denied-overlay::before {
+  content: '';
+  position: fixed;
+  top: 30%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(0,200,180,0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.denied-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  overflow: hidden;
+  animation: fadeUp 0.5s ease both;
+}
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+.denied-card-header {
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.denied-card-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 3px;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.denied-card-title {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.denied-body {
+  text-align: center;
+  padding: 40px 28px;
+}
+
+.denied-icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.5; }
+.denied-title { font-family: var(--font-mono); font-size: 0.9rem; color: var(--danger); margin-bottom: 8px; }
+.denied-sub { font-size: 0.83rem; color: var(--muted); }
+
+/* ===== MAIN CONTENT ===== */
 .main-content { flex: 1; padding: 32px 24px; position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; width: 100%; }
 
 .page-header {
@@ -131,7 +198,6 @@ body::before {
 }
 
 .stat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-
 .stat-card::before {
   content: '';
   position: absolute;
@@ -234,22 +300,12 @@ tbody td { padding: 11px 16px; color: var(--text); }
   font-weight: 700;
 }
 
-.badge-entrada        { background: rgba(0,102,255,0.15);  color: #60a5fa; border: 1px solid rgba(0,102,255,0.3); }
-.badge-salida         { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.badge-entrada          { background: rgba(0,102,255,0.15);  color: #60a5fa; border: 1px solid rgba(0,102,255,0.3); }
+.badge-salida           { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
 .badge-descanso_salida  { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
 .badge-descanso_entrada { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
 
-/* Rol badges */
-.badge-rol {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 0.72rem;
-  font-family: var(--font-mono);
-  font-weight: 700;
-}
-
+.badge-rol { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-family: var(--font-mono); font-weight: 700; }
 .badge-rol-admin { background: rgba(0,200,180,0.15); color: var(--accent); border: 1px solid rgba(0,200,180,0.3); }
 .badge-rol-user  { background: rgba(90,106,130,0.2);  color: #94a3b8;      border: 1px solid rgba(90,106,130,0.3); }
 
@@ -314,7 +370,6 @@ tbody td { padding: 11px 16px; color: var(--text); }
 }
 
 @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-@keyframes fadeUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
 .modal-dark .modal-content { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); }
 .modal-dark .modal-header  { border-bottom: 1px solid var(--border); padding: 16px 20px; }
@@ -335,7 +390,6 @@ footer {
 }
 
 .footer-brand { color: var(--accent); letter-spacing: 3px; text-shadow: 0 0 10px rgba(0,200,180,0.5); }
-
 .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
 .status-active   { background: #10b981; box-shadow: 0 0 6px #10b981; }
 .status-inactive { background: var(--muted); }
@@ -351,17 +405,33 @@ footer {
       <div class="brand-dot"></div>
       CONTROL BIOMÉTRICO
     </a>
-    <ul class="navbar-nav ms-auto d-flex flex-row gap-1 align-items-center">
-      <li class="nav-item"><a class="nav-link" href="index.html">Inicio</a></li>
-      <li class="nav-item"><a class="nav-link" href="registro.html">Registrar</a></li>
-      <li class="nav-item"><a class="nav-link" href="usuarios.html">Usuarios</a></li>
-      <li class="nav-item"><a class="nav-link danger" href="#" id="logoutBtn">Salir</a></li>
+    <ul class="navbar-nav ms-auto d-flex flex-row gap-1 align-items-center" id="navLinks">
+      <li class="nav-item" id="linkIndex" style="display:none"><a class="nav-link" href="index.html">Inicio</a></li>
+      <li class="nav-item" id="linkRegistro" style="display:none"><a class="nav-link" href="registro.html">Registrar</a></li>
+      <li class="nav-item" id="linkUsuarios" style="display:none"><a class="nav-link" href="usuarios.html">Usuarios</a></li>
+      <li class="nav-item" id="linkLogin"><a class="nav-link" href="login.html">Login</a></li>
+      <li class="nav-item" id="linkLogout" style="display:none"><a class="nav-link danger" href="#" id="logoutBtn">Salir</a></li>
     </ul>
   </div>
 </nav>
 
-<!-- MAIN -->
-<main class="main-content">
+<!-- DENIED (shown when no token / no permission) -->
+<div class="denied-overlay" id="deniedOverlay" style="display:none">
+  <div class="denied-card">
+    <div class="denied-card-header">
+      <div class="denied-card-eyebrow">Panel Administrativo</div>
+      <div class="denied-card-title">Acceso Restringido</div>
+    </div>
+    <div class="denied-body">
+      <div class="denied-icon">🔒</div>
+      <div class="denied-title">Acceso restringido</div>
+      <div class="denied-sub" id="deniedMsg">Debes iniciar sesión para acceder.</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN (hidden until auth passes) -->
+<main class="main-content" id="mainContent" style="display:none">
 
   <!-- Header -->
   <div class="page-header">
@@ -414,9 +484,7 @@ footer {
     </div>
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr><th>Nombre</th><th>Sede</th><th>Tipo</th><th>Fecha / Hora</th></tr>
-        </thead>
+        <thead><tr><th>Nombre</th><th>Sede</th><th>Tipo</th><th>Fecha / Hora</th></tr></thead>
         <tbody id="registrosBody"></tbody>
       </table>
     </div>
@@ -447,9 +515,7 @@ footer {
     </div>
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr><th>Nombre</th><th>Sede</th><th>Estado</th><th>Acciones</th></tr>
-        </thead>
+        <thead><tr><th>Nombre</th><th>Sede</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody id="personasBody"></tbody>
       </table>
     </div>
@@ -470,9 +536,7 @@ footer {
     </div>
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr>
-        </thead>
+        <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody id="usuariosBody"></tbody>
       </table>
     </div>
@@ -548,23 +612,60 @@ footer {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-/* ===== GUARD ===== */
+/* ===== HELPERS ===== */
+function showDenied(msg) {
+  document.getElementById("deniedMsg").textContent = msg;
+  document.getElementById("deniedOverlay").style.display = "flex";
+  document.getElementById("mainContent").style.display   = "none";
+}
+
+function showMain() {
+  document.getElementById("deniedOverlay").style.display = "none";
+  document.getElementById("mainContent").style.display   = "block";
+}
+
 /* ===== GUARD ===== */
 const token = localStorage.getItem("token");
-let currentRole = "user";
+let currentRole = null;
+
+document.getElementById("logoutBtn").addEventListener("click", e => {
+  e.preventDefault();
+  localStorage.removeItem("token");
+  window.location.href = "login.html";
+});
 
 if (!token) {
-  window.location.href = "login.html";
+  showDenied("Debes iniciar sesión para acceder.");
 } else {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     currentRole = payload.role;
-    if (currentRole !== "admin") window.location.href = "index.html";
+
+    if (currentRole !== "admin") {
+      showDenied("No tienes permisos para acceder al panel administrativo.");
+    } else {
+      showMain();
+
+      // Navbar
+      document.getElementById("linkLogin").style.display   = "none";
+      document.getElementById("linkLogout").style.display  = "block";
+      document.getElementById("linkIndex").style.display   = "block";
+      document.getElementById("linkRegistro").style.display = "block";
+      document.getElementById("linkUsuarios").style.display = "block";
+
+      // Init data
+      window.addEventListener("load", () => {
+        cargarRegistros();
+        cargarPersonas();
+        cargarUsuarios();
+      });
+    }
   } catch {
     localStorage.removeItem("token");
-    window.location.href = "login.html";
+    showDenied("Sesión inválida. Por favor inicia sesión de nuevo.");
   }
 }
+
 /* ===== VARIABLES ===== */
 let chart;
 let editingId     = null;
@@ -574,8 +675,10 @@ let allUsuarios   = [];
 
 /* ===== DATETIME ===== */
 function updateClock() {
+  const el = document.getElementById("currentDateTime");
+  if (!el) return;
   const now = new Date();
-  document.getElementById("currentDateTime").textContent =
+  el.textContent =
     now.toLocaleDateString("es-CO", { weekday:"long", year:"numeric", month:"long", day:"numeric" })
     + " · " + now.toLocaleTimeString("es-CO", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
 }
@@ -598,13 +701,6 @@ function debounce(fn, d) {
   let t;
   return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), d); };
 }
-
-/* ===== LOGOUT ===== */
-document.getElementById("logoutBtn").addEventListener("click", e => {
-  e.preventDefault();
-  localStorage.removeItem("token");
-  window.location.href = "login.html";
-});
 
 /* ===== REGISTROS ===== */
 async function cargarRegistros() {
@@ -738,7 +834,7 @@ function renderPersonas() {
   const tbody   = document.getElementById("personasBody");
 
   let lista = allPersonas;
-  if (busq)        lista = lista.filter(p => p.nombre.toLowerCase().includes(busq) || p.sede.toLowerCase().includes(busq));
+  if (busq)           lista = lista.filter(p => p.nombre.toLowerCase().includes(busq) || p.sede.toLowerCase().includes(busq));
   if (filtroA !== "") lista = lista.filter(p => String(p.activo ? 1 : 0) === filtroA);
 
   if (!lista.length) {
@@ -811,11 +907,11 @@ document.getElementById("editConfirm").addEventListener("click", async () => {
 async function cargarUsuarios() {
   try {
     const res = await fetch("/usuarios", { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) return; // sin permisos
+    if (!res.ok) return;
     allUsuarios = await res.json();
     renderUsuarios();
     document.getElementById("panelUsuarios").style.display = "block";
-  } catch { /* no admin, no panel */ }
+  } catch { /* sin permisos */ }
 }
 
 function renderUsuarios() {
@@ -824,7 +920,7 @@ function renderUsuarios() {
   const tbody   = document.getElementById("usuariosBody");
 
   let lista = allUsuarios;
-  if (busq)        lista = lista.filter(u => u.username.toLowerCase().includes(busq));
+  if (busq)           lista = lista.filter(u => u.username.toLowerCase().includes(busq));
   if (filtroR !== "") lista = lista.filter(u => u.rol === filtroR);
 
   if (!lista.length) {
@@ -832,26 +928,26 @@ function renderUsuarios() {
     return;
   }
 
-tbody.innerHTML = lista.map(u => {
-  const activo = u.activo == 1; // ← doble igual para aceptar tanto 1 como true
-  return `
-    <tr data-id="${u.id}">
-      <td style="font-weight:500;font-family:var(--font-mono);font-size:0.85rem">${u.username}</td>
-      <td><span class="badge-rol badge-rol-${u.rol}">${u.rol.toUpperCase()}</span></td>
-      <td>
-        <span class="status-dot ${activo ? 'status-active' : 'status-inactive'}"></span>
-        <span style="font-size:0.8rem;color:${activo ? '#34d399' : 'var(--muted)'}">
-          ${activo ? "Activo" : "Inactivo"}
-        </span>
-      </td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn-sm-action btn-edit editUserBtn">Editar</button>
-        <button class="btn-sm-action btn-del deleteUserBtn">Eliminar</button>
-        <button class="btn-sm-action btn-toggle toggleUserBtn">${activo ? "Desactivar" : "Activar"}</button>
-      </td>
-    </tr>
-  `;
-}).join("");
+  tbody.innerHTML = lista.map(u => {
+    const activo = u.activo == 1;
+    return `
+      <tr data-id="${u.id}">
+        <td style="font-weight:500;font-family:var(--font-mono);font-size:0.85rem">${u.username}</td>
+        <td><span class="badge-rol badge-rol-${u.rol}">${u.rol.toUpperCase()}</span></td>
+        <td>
+          <span class="status-dot ${activo ? 'status-active' : 'status-inactive'}"></span>
+          <span style="font-size:0.8rem;color:${activo ? '#34d399' : 'var(--muted)'}">
+            ${activo ? "Activo" : "Inactivo"}
+          </span>
+        </td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-sm-action btn-edit editUserBtn">Editar</button>
+          <button class="btn-sm-action btn-del deleteUserBtn">Eliminar</button>
+          <button class="btn-sm-action btn-toggle toggleUserBtn">${activo ? "Desactivar" : "Activar"}</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
 
   tbody.querySelectorAll(".editUserBtn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -920,13 +1016,6 @@ document.getElementById("busquedaPersonas").addEventListener("input", debounce(r
 document.getElementById("filtroActivo").addEventListener("change", renderPersonas);
 document.getElementById("busquedaUsuarios").addEventListener("input", debounce(renderUsuarios, 250));
 document.getElementById("filtroRol").addEventListener("change", renderUsuarios);
-
-/* ===== INIT ===== */
-window.addEventListener("load", () => {
-  cargarRegistros();
-  cargarPersonas();
-  if (currentRole === "admin") cargarUsuarios();
-});
 </script>
 </body>
 </html>
