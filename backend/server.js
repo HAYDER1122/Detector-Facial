@@ -16,11 +16,11 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // CONEXION MYSQL
 const db = mysql.createPool({
-  host: process.env.DB_HOST || "crossover.proxy.rlwy.net",
+  host: process.env.DB_HOST || "monorail.proxy.rlwy.net",
   user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "olUAUFxKCdxJxcnjgUcHmccxlNjJgeHR",
+  password: process.env.DB_PASSWORD || "cUyiqOfHiQYoOWcXQvvUiyVieetLAMxN",
   database: process.env.DB_NAME || "railway",
-  port: Number(process.env.DB_PORT) || 38474,
+  port: Number(process.env.DB_PORT) || 50199,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
