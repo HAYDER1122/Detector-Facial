@@ -1,4 +1,4 @@
-// SERVER 
+// SERVER
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2");
@@ -6,24 +6,49 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const path = require("path");
 const ExcelJS = require("exceljs");
+const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const app = express();
 
-app.use(cors());
+// ✅ FIX: CORS restringido al origen del cliente
+app.use(cors({
+  origin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
+  methods: ["GET", "POST", "PUT", "DELETE"]
+}));
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
+// ✅ Rate limiter para login
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { msg: "Demasiados intentos fallidos. Espera 15 minutos." }
+});
+
+// ✅ FIX: Rate limiter general para rutas sensibles sin token
+const generalLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { msg: "Demasiadas peticiones. Intenta más tarde." }
+});
+
 // CONEXION MYSQL
 const db = mysql.createPool({
-  host: process.env.DB_HOST || "monorail.proxy.rlwy.net",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "cUyiqOfHiQYoOWcXQvvUiyVieetLAMxN",
-  database: process.env.DB_NAME || "railway",
-  port: Number(process.env.DB_PORT) || 50199,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: Number(process.env.DB_PORT) || 3306,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  timezone: "-05:00"
 });
 
 db.getConnection((err, conn) => {
@@ -35,7 +60,6 @@ db.getConnection((err, conn) => {
   }
 });
 
-// ⚠️ IMPORTANTE: usamos db.promise() para los endpoints que usan async/await
 const dbPromise = db.promise();
 
 
@@ -48,7 +72,7 @@ function verificarToken(req, res, next) {
   const token = header.split(" ")[1];
   if (!token) return res.status(401).send({ msg: "Token inválido" });
 
-  jwt.verify(token, process.env.JWT_SECRET || "clave_secreta", (err, decoded) => {
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) return res.status(401).send({ msg: "Token inválido" });
     req.user = decoded;
     next();
@@ -61,6 +85,7 @@ function soloAdmin(req, res, next) {
   next();
 }
 
+// ✅ FIX: soloAdminOOperador simplificado — verificarToken ya garantiza usuario válido
 function soloAdminOOperador(req, res, next) {
   if (!["admin", "user"].includes(req.user.role))
     return res.status(403).send({ msg: "No autorizado" });
@@ -86,17 +111,32 @@ function euclideanDistance(a, b) {
 
 const FACE_THRESHOLD = 0.45;
 
+// ✅ FIX: Validación de longitud de password (bcrypt solo procesa 72 chars)
+function validarPassword(password, res) {
+  if (!password || password.length > 72) {
+    res.status(400).send({ msg: "La contraseña debe tener entre 1 y 72 caracteres" });
+    return false;
+  }
+  return true;
+}
+
 
 // LOGIN
 
-app.post("/login", (req, res) => {
+app.post("/login", loginLimiter, (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password)
     return res.status(400).send({ msg: "Datos incompletos" });
 
+  // ✅ FIX: Validar longitud antes de bcrypt
+  if (!validarPassword(password, res)) return;
+
   db.query("SELECT * FROM usuarios WHERE username=?", [username], async (err, rows) => {
-    if (err) return res.status(500).send({ msg: "Error BD" });
+    if (err) {
+      console.error("Error en login:", err);
+      return res.status(500).send({ msg: "Error BD" });
+    }
     if (rows.length === 0)
       return res.status(400).send({ msg: "Usuario no encontrado" });
 
@@ -108,10 +148,9 @@ app.post("/login", (req, res) => {
     if (!user.activo)
       return res.status(403).send({ msg: "Usuario desactivado. Contacta al administrador." });
 
-
     const token = jwt.sign(
       { id: user.id, role: user.rol },
-      process.env.JWT_SECRET || "clave_secreta",
+      process.env.JWT_SECRET,
       { expiresIn: "12h" }
     );
 
@@ -120,59 +159,36 @@ app.post("/login", (req, res) => {
 });
 
 
-//crear usuario
-
-app.post("/crear-usuario", verificarToken, soloAdmin, async (req, res) => {
-  const { username, password, rol } = req.body;
-
-  if (!username || !password || !rol)
-    return res.status(400).send({ msg: "Datos incompletos" });
-
-  if (!["admin", "user"].includes(rol))
-    return res.status(400).send({ msg: "Rol inválido" });
-
-  db.query("SELECT id FROM usuarios WHERE username=?", [username], async (err, rows) => {
-    if (err) return res.status(500).send({ msg: "Error BD" });
-    if (rows.length > 0)
-      return res.status(400).send({ msg: "Usuario ya existe" });
-
-    const hashed = await bcrypt.hash(password, 10);
-
-    db.query(
-      "INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)",
-      [username, hashed, rol],
-      err2 => {
-        if (err2) return res.status(500).send({ msg: "Error creando usuario" });
-        res.send({ ok: true, msg: "Usuario creado correctamente ✅" });
-      }
-    );
-  });
-});
-
-
-
+// CRUD USUARIOS
+// ✅ FIX: Eliminada ruta duplicada /crear-usuario — consolidada en POST /usuarios
 
 app.get("/usuarios", verificarToken, soloAdmin, (req, res) => {
   db.query("SELECT id, username, rol, activo FROM usuarios", (err, rows) => {
-    if (err) return res.status(500).send([]);
+    if (err) {
+      console.error("Error obteniendo usuarios:", err);
+      return res.status(500).send([]);
+    }
     res.send(rows);
   });
 });
 
-
 app.post("/usuarios", verificarToken, soloAdmin, async (req, res) => {
   const { username, password, rol, activo } = req.body;
 
-  if (!username || !password || !rol) {
+  if (!username || !password || !rol)
     return res.status(400).json({ msg: "Completa todos los campos" });
-  }
 
-  if (!["admin", "user"].includes(rol)) {
+  if (!["admin", "user"].includes(rol))
     return res.status(400).json({ msg: "Rol inválido" });
-  }
+
+  // ✅ FIX: Validar longitud antes de bcrypt
+  if (!validarPassword(password, res)) return;
 
   db.query("SELECT id FROM usuarios WHERE username = ?", [username], async (err, rows) => {
-    if (err) return res.status(500).json({ msg: "Error BD" });
+    if (err) {
+      console.error("Error verificando usuario:", err);
+      return res.status(500).json({ msg: "Error BD" });
+    }
     if (rows.length > 0) return res.status(400).json({ msg: "Usuario ya existe" });
 
     const hash = await bcrypt.hash(password, 10);
@@ -181,14 +197,15 @@ app.post("/usuarios", verificarToken, soloAdmin, async (req, res) => {
       "INSERT INTO usuarios (username, password, rol, activo, creado_en) VALUES (?, ?, ?, ?, NOW())",
       [username, hash, rol, activo ? 1 : 0],
       err2 => {
-        if (err2) return res.status(500).json({ msg: "Error guardando usuario" });
+        if (err2) {
+          console.error("Error creando usuario:", err2);
+          return res.status(500).json({ msg: "Error guardando usuario" });
+        }
         res.json({ msg: "Usuario creado correctamente ✅" });
       }
     );
   });
 });
-
-// CRUD USUARIOS
 
 app.put("/usuarios/:id", verificarToken, soloAdmin, async (req, res) => {
   const { username, rol, password } = req.body;
@@ -198,27 +215,38 @@ app.put("/usuarios/:id", verificarToken, soloAdmin, async (req, res) => {
   let params = [username, rol, req.params.id];
 
   if (password) {
+    // ✅ FIX: Validar longitud antes de bcrypt
+    if (!validarPassword(password, res)) return;
     const hash = await bcrypt.hash(password, 10);
     sql = "UPDATE usuarios SET username=?, rol=?, password=? WHERE id=?";
     params = [username, rol, hash, req.params.id];
   }
 
   db.query(sql, params, err => {
-    if (err) return res.status(500).json({ msg: "Error actualizando" });
+    if (err) {
+      console.error("Error actualizando usuario:", err);
+      return res.status(500).json({ msg: "Error actualizando" });
+    }
     res.json({ ok: true });
   });
 });
 
 app.delete("/usuarios/:id", verificarToken, soloAdmin, (req, res) => {
   db.query("DELETE FROM usuarios WHERE id=?", [req.params.id], err => {
-    if (err) return res.status(500).json({ ok: false });
+    if (err) {
+      console.error("Error eliminando usuario:", err);
+      return res.status(500).json({ ok: false });
+    }
     res.json({ ok: true });
   });
 });
 
 app.post("/usuarios/:id/toggle", verificarToken, soloAdmin, (req, res) => {
   db.query("UPDATE usuarios SET activo = NOT activo WHERE id=?", [req.params.id], err => {
-    if (err) return res.status(500).json({ ok: false });
+    if (err) {
+      console.error("Error en toggle usuario:", err);
+      return res.status(500).json({ ok: false });
+    }
     res.json({ ok: true });
   });
 });
@@ -235,7 +263,10 @@ app.post("/registrar-persona", verificarToken, soloAdminOOperador, (req, res) =>
   const nuevoDescriptor = descriptors[0];
 
   db.query("SELECT descriptor FROM descriptores", (err, rows) => {
-    if (err) return res.status(500).send({ msg: "Error BD" });
+    if (err) {
+      console.error("Error obteniendo descriptores:", err);
+      return res.status(500).send({ msg: "Error BD" });
+    }
 
     for (const row of rows) {
       const dist = euclideanDistance(row.descriptor, nuevoDescriptor);
@@ -247,7 +278,10 @@ app.post("/registrar-persona", verificarToken, soloAdminOOperador, (req, res) =>
       "INSERT INTO personas (nombre, sede, activo) VALUES (?, ?, 1)",
       [nombre, sede],
       (err2, result) => {
-        if (err2) return res.status(500).send({ msg: "Error guardando persona" });
+        if (err2) {
+          console.error("Error guardando persona:", err2);
+          return res.status(500).send({ msg: "Error guardando persona" });
+        }
 
         const personaId = result.insertId;
         const values = descriptors.map(d => [personaId, JSON.stringify(d)]);
@@ -256,8 +290,10 @@ app.post("/registrar-persona", verificarToken, soloAdminOOperador, (req, res) =>
           "INSERT INTO descriptores (persona_id, descriptor) VALUES ?",
           [values],
           err3 => {
-            if (err3)
+            if (err3) {
+              console.error("Error guardando descriptores:", err3);
               return res.status(500).send({ msg: "Error guardando descriptores" });
+            }
             res.send({ msg: "Persona registrada correctamente ✅" });
           }
         );
@@ -268,8 +304,10 @@ app.post("/registrar-persona", verificarToken, soloAdminOOperador, (req, res) =>
 
 
 // RECONOCER
+// ✅ FIX: Protegido con verificarToken + generalLimiter
+// Agrega el token JWT en el header Authorization desde tu cliente/dispositivo
 
-app.post("/reconocer", (req, res) => {
+app.post("/reconocer", generalLimiter, verificarToken, (req, res) => {
   console.time("Reconocer");
 
   const { descriptor, tipo } = req.body;
@@ -281,15 +319,18 @@ app.post("/reconocer", (req, res) => {
   if (!tiposValidos.includes(tipo))
     return res.status(400).send({ ok: false });
 
+  // ✅ FIX: Eliminado LIMIT 100 — carga todas las personas activas
   db.query(`
     SELECT p.id, p.nombre, d.descriptor
     FROM personas p
     JOIN descriptores d ON d.persona_id = p.id
     WHERE p.activo = 1
-    LIMIT 100
   `, (err, filas) => {
 
-    if (err) return res.status(500).send({ ok: false });
+    if (err) {
+      console.error("Error en reconocer:", err);
+      return res.status(500).send({ ok: false });
+    }
 
     let personaCoincidente = null;
     let minDist = 999;
@@ -309,6 +350,10 @@ app.post("/reconocer", (req, res) => {
       `SELECT tipo FROM registros WHERE persona_id=? AND DATE(fecha_hora)=CURDATE()`,
       [personaCoincidente.id],
       (err2, registros) => {
+        if (err2) {
+          console.error("Error obteniendo registros del día:", err2);
+          return res.status(500).send({ ok: false });
+        }
 
         const accionesHoy = registros.map(r => r.tipo);
 
@@ -345,7 +390,10 @@ app.post("/reconocer", (req, res) => {
           [personaCoincidente.id, tipoDBMap[tipo]],
           err3 => {
             console.timeEnd("Reconocer");
-            if (err3) return res.status(500).send({ ok: false });
+            if (err3) {
+              console.error("Error guardando registro:", err3);
+              return res.status(500).send({ ok: false });
+            }
             res.send({
               ok: true,
               nombre: personaCoincidente.nombre,
@@ -363,14 +411,20 @@ app.post("/reconocer", (req, res) => {
 
 app.get("/personas", verificarToken, (req, res) => {
   db.query("SELECT id, nombre, sede, activo FROM personas", (err, rows) => {
-    if (err) return res.status(500).send([]);
+    if (err) {
+      console.error("Error obteniendo personas:", err);
+      return res.status(500).send([]);
+    }
     res.send(rows);
   });
 });
 
 app.post("/personas/:id/toggle", verificarToken, soloAdmin, (req, res) => {
   db.query("UPDATE personas SET activo = NOT activo WHERE id=?", [req.params.id], err => {
-    if (err) return res.status(500).send({ ok: false });
+    if (err) {
+      console.error("Error en toggle persona:", err);
+      return res.status(500).send({ ok: false });
+    }
     res.send({ ok: true });
   });
 });
@@ -381,18 +435,23 @@ app.put("/personas/:id", verificarToken, soloAdmin, (req, res) => {
     "UPDATE personas SET nombre=?, sede=? WHERE id=?",
     [nombre, sede, req.params.id],
     err => {
-      if (err) return res.status(500).send({ ok: false });
+      if (err) {
+        console.error("Error actualizando persona:", err);
+        return res.status(500).send({ ok: false });
+      }
       res.send({ ok: true });
     }
   );
 });
 
+// ✅ FIX: Eliminado DELETE manual de descriptores — ON DELETE CASCADE lo maneja automáticamente
 app.delete("/personas/:id", verificarToken, soloAdmin, (req, res) => {
-  db.query("DELETE FROM descriptores WHERE persona_id=?", [req.params.id], () => {
-    db.query("DELETE FROM personas WHERE id=?", [req.params.id], err => {
-      if (err) return res.status(500).send({ ok: false });
-      res.send({ ok: true });
-    });
+  db.query("DELETE FROM personas WHERE id=?", [req.params.id], err => {
+    if (err) {
+      console.error("Error eliminando persona:", err);
+      return res.status(500).send({ ok: false });
+    }
+    res.send({ ok: true });
   });
 });
 
@@ -400,7 +459,7 @@ app.delete("/personas/:id", verificarToken, soloAdmin, (req, res) => {
 // ASISTENCIAS
 
 app.get("/asistencias", verificarToken, soloAdmin, (req, res) => {
-  const { fecha, busqueda, tipo } = req.query;
+  const { desde, hasta, busqueda, tipo } = req.query;
 
   let sql = `
     SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
@@ -410,7 +469,8 @@ app.get("/asistencias", verificarToken, soloAdmin, (req, res) => {
   `;
   const params = [];
 
-  if (fecha) { sql += " AND DATE(r.fecha_hora) = ?"; params.push(fecha); }
+  if (desde) { sql += " AND DATE(r.fecha_hora) >= ?"; params.push(desde); }
+  if (hasta) { sql += " AND DATE(r.fecha_hora) <= ?"; params.push(hasta); }
   if (busqueda) {
     sql += " AND (LOWER(p.nombre) LIKE ? OR LOWER(p.sede) LIKE ?)";
     params.push(`%${busqueda.toLowerCase()}%`, `%${busqueda.toLowerCase()}%`);
@@ -420,7 +480,10 @@ app.get("/asistencias", verificarToken, soloAdmin, (req, res) => {
   sql += " ORDER BY r.fecha_hora DESC LIMIT 500";
 
   db.query(sql, params, (err, rows) => {
-    if (err) { console.error("Error obteniendo registros:", err); return res.status(500).json([]); }
+    if (err) {
+      console.error("Error obteniendo registros:", err);
+      return res.status(500).json([]);
+    }
     res.json(rows);
   });
 });
@@ -429,7 +492,7 @@ app.get("/asistencias", verificarToken, soloAdmin, (req, res) => {
 // EXPORTAR EXCEL
 
 app.get("/exportar-registros", verificarToken, soloAdminOOperador, async (req, res) => {
-  const { fecha, busqueda, tipo } = req.query;
+  const { desde, hasta, busqueda, tipo } = req.query;
 
   let sql = `
     SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
@@ -439,7 +502,8 @@ app.get("/exportar-registros", verificarToken, soloAdminOOperador, async (req, r
   `;
   const params = [];
 
-  if (fecha) { sql += " AND DATE(r.fecha_hora) = ?"; params.push(fecha); }
+  if (desde) { sql += " AND DATE(r.fecha_hora) >= ?"; params.push(desde); }
+  if (hasta) { sql += " AND DATE(r.fecha_hora) <= ?"; params.push(hasta); }
   if (busqueda) {
     sql += " AND (LOWER(p.nombre) LIKE ? OR LOWER(p.sede) LIKE ?)";
     params.push(`%${busqueda.toLowerCase()}%`, `%${busqueda.toLowerCase()}%`);
@@ -449,7 +513,10 @@ app.get("/exportar-registros", verificarToken, soloAdminOOperador, async (req, r
   sql += " ORDER BY r.fecha_hora DESC";
 
   db.query(sql, params, async (err, rows) => {
-    if (err) return res.status(500).json({ msg: "Error generando Excel" });
+    if (err) {
+      console.error("Error generando Excel:", err);
+      return res.status(500).json({ msg: "Error generando Excel" });
+    }
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Registros");

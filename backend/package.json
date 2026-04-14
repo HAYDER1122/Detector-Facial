@@ -16,6 +16,7 @@
     "dotenv": "^17.2.4",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.3.2",
     "face-api.js": "^0.22.2",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
