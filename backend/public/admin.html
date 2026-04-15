@@ -635,7 +635,7 @@ document.getElementById("logoutBtn").addEventListener("click", e => {
 });
 
 if (!token) {
-  showDenied("Debes iniciar sesión para acceder.");
+  window.location.href = "/login.html";
 } else {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
