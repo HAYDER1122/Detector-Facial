@@ -315,7 +315,7 @@ app.post("/registrar-persona",  (req, res) => {
 // RECONOCER
 // FIX #2: Lógica de descanso corregida — todo normalizado a tipos de BD
 
-app.post("/reconocer", generalLimiter, verificarToken, (req, res) => {
+app.post("/reconocer", generalLimiter,  (req, res) => {
   console.time("Reconocer");
 
   const { descriptor, tipo } = req.body;
