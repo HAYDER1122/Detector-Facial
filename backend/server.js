@@ -11,9 +11,9 @@ require("dotenv").config();
 
 const app = express();
 
-//  FIX: CORS restringido al origen del cliente
+// FIX #1: CORS apunta al mismo dominio en producción
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
+  origin: process.env.CLIENT_ORIGIN || "*",
   methods: ["GET", "POST", "PUT", "DELETE"]
 }));
 
@@ -29,7 +29,7 @@ const loginLimiter = rateLimit({
   message: { msg: "Demasiados intentos fallidos. Espera 15 minutos." }
 });
 
-//  FIX: Rate limiter general para rutas sensibles sin token
+// Rate limiter general para rutas sensibles
 const generalLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 60,
@@ -73,7 +73,13 @@ function verificarToken(req, res, next) {
   if (!token) return res.status(401).send({ msg: "Token inválido" });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(401).send({ msg: "Token inválido" });
+    // FIX #5: Distinguir token expirado de token inválido
+    if (err) {
+      if (err.name === "TokenExpiredError") {
+        return res.status(401).send({ msg: "Token expirado", expired: true });
+      }
+      return res.status(401).send({ msg: "Token inválido" });
+    }
     req.user = decoded;
     next();
   });
@@ -85,7 +91,6 @@ function soloAdmin(req, res, next) {
   next();
 }
 
-//  FIX: soloAdminOOperador simplificado  verificarToken ya garantiza usuario válido
 function soloAdminOOperador(req, res, next) {
   if (!["admin", "user"].includes(req.user.role))
     return res.status(403).send({ msg: "No autorizado" });
@@ -111,7 +116,7 @@ function euclideanDistance(a, b) {
 
 const FACE_THRESHOLD = 0.45;
 
-//  FIX: Validación de longitud de password (bcrypt solo procesa 72 chars)
+// Validación de longitud de password (bcrypt solo procesa 72 chars)
 function validarPassword(password, res) {
   if (!password || password.length > 72) {
     res.status(400).send({ msg: "La contraseña debe tener entre 1 y 72 caracteres" });
@@ -129,7 +134,6 @@ app.post("/login", loginLimiter, (req, res) => {
   if (!username || !password)
     return res.status(400).send({ msg: "Datos incompletos" });
 
-  //FIX: Validar longitud antes de bcrypt
   if (!validarPassword(password, res)) return;
 
   db.query("SELECT * FROM usuarios WHERE username=?", [username], async (err, rows) => {
@@ -160,7 +164,6 @@ app.post("/login", loginLimiter, (req, res) => {
 
 
 // CRUD USUARIOS
-//  FIX: Eliminada ruta duplicada /crear-usuario consolidada en POST /usuarios
 
 app.get("/usuarios", verificarToken, soloAdmin, (req, res) => {
   db.query("SELECT id, username, rol, activo FROM usuarios", (err, rows) => {
@@ -181,7 +184,6 @@ app.post("/usuarios", verificarToken, soloAdmin, async (req, res) => {
   if (!["admin", "user"].includes(rol))
     return res.status(400).json({ msg: "Rol inválido" });
 
-  // ✅ FIX: Validar longitud antes de bcrypt
   if (!validarPassword(password, res)) return;
 
   db.query("SELECT id FROM usuarios WHERE username = ?", [username], async (err, rows) => {
@@ -215,7 +217,6 @@ app.put("/usuarios/:id", verificarToken, soloAdmin, async (req, res) => {
   let params = [username, rol, req.params.id];
 
   if (password) {
-    //  FIX: Validar longitud antes de bcrypt
     if (!validarPassword(password, res)) return;
     const hash = await bcrypt.hash(password, 10);
     sql = "UPDATE usuarios SET username=?, rol=?, password=? WHERE id=?";
@@ -232,6 +233,10 @@ app.put("/usuarios/:id", verificarToken, soloAdmin, async (req, res) => {
 });
 
 app.delete("/usuarios/:id", verificarToken, soloAdmin, (req, res) => {
+  // FIX #6: Evitar que un admin se elimine a sí mismo
+  if (req.params.id == req.user.id)
+    return res.status(400).json({ msg: "No puedes eliminar tu propia cuenta" });
+
   db.query("DELETE FROM usuarios WHERE id=?", [req.params.id], err => {
     if (err) {
       console.error("Error eliminando usuario:", err);
@@ -242,6 +247,10 @@ app.delete("/usuarios/:id", verificarToken, soloAdmin, (req, res) => {
 });
 
 app.post("/usuarios/:id/toggle", verificarToken, soloAdmin, (req, res) => {
+  // FIX #6: Evitar que un admin se desactive a sí mismo
+  if (req.params.id == req.user.id)
+    return res.status(400).json({ msg: "No puedes desactivarte a ti mismo" });
+
   db.query("UPDATE usuarios SET activo = NOT activo WHERE id=?", [req.params.id], err => {
     if (err) {
       console.error("Error en toggle usuario:", err);
@@ -304,8 +313,7 @@ app.post("/registrar-persona", verificarToken, soloAdminOOperador, (req, res) =>
 
 
 // RECONOCER
-// FIX: Protegido con verificarToken + generalLimiter
-// Agrega el token JWT en el header Authorization desde tu cliente/dispositivo
+// FIX #2: Lógica de descanso corregida — todo normalizado a tipos de BD
 
 app.post("/reconocer", generalLimiter, verificarToken, (req, res) => {
   console.time("Reconocer");
@@ -319,7 +327,15 @@ app.post("/reconocer", generalLimiter, verificarToken, (req, res) => {
   if (!tiposValidos.includes(tipo))
     return res.status(400).send({ ok: false });
 
-  // ✅ FIX: Eliminado LIMIT 100 — carga todas las personas activas
+  // FIX #2: Mapeo al inicio para usar en validaciones consistentemente
+  const tipoDBMap = {
+    entrada: "entrada",
+    salida: "salida",
+    descanso: "descanso_salida",
+    entrada_descanso: "descanso_entrada"
+  };
+  const tipoGuardado = tipoDBMap[tipo];
+
   db.query(`
     SELECT p.id, p.nombre, d.descriptor
     FROM personas p
@@ -355,39 +371,33 @@ app.post("/reconocer", generalLimiter, verificarToken, (req, res) => {
           return res.status(500).send({ ok: false });
         }
 
+        // FIX #2: accionesHoy usa tipos de BD (descanso_salida, descanso_entrada)
         const accionesHoy = registros.map(r => r.tipo);
 
-        if (tipo === "entrada" && accionesHoy.includes("entrada"))
+        if (tipoGuardado === "entrada" && accionesHoy.includes("entrada"))
           return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
 
-        if (tipo === "salida" && !accionesHoy.includes("entrada"))
+        if (tipoGuardado === "salida" && !accionesHoy.includes("entrada"))
           return res.send({ ok: false, mensaje: "No puedes salir sin entrar" });
 
-        if (tipo === "salida" && accionesHoy.includes("salida"))
+        if (tipoGuardado === "salida" && accionesHoy.includes("salida"))
           return res.send({ ok: false, mensaje: "Ya registraste salida hoy" });
 
-        if (tipo === "descanso" && !accionesHoy.includes("entrada"))
+        if (tipoGuardado === "descanso_salida" && !accionesHoy.includes("entrada"))
           return res.send({ ok: false, mensaje: "No puedes descansar sin entrar" });
 
-        if (tipo === "descanso" && accionesHoy.includes("descanso_salida"))
-          return res.send({ ok: false, mensaje: "Ya registraste descanso hoy" });
+        if (tipoGuardado === "descanso_salida" && accionesHoy.includes("descanso_salida"))
+          return res.send({ ok: false, mensaje: "Ya registraste salida a descanso hoy" });
 
-        if (tipo === "entrada_descanso" && !accionesHoy.includes("descanso_salida"))
+        if (tipoGuardado === "descanso_entrada" && !accionesHoy.includes("descanso_salida"))
           return res.send({ ok: false, mensaje: "No puedes entrar de descanso sin salir antes" });
 
-        if (tipo === "entrada_descanso" && accionesHoy.includes("descanso_entrada"))
+        if (tipoGuardado === "descanso_entrada" && accionesHoy.includes("descanso_entrada"))
           return res.send({ ok: false, mensaje: "Ya registraste entrada de descanso hoy" });
-
-        const tipoDBMap = {
-          entrada: "entrada",
-          salida: "salida",
-          descanso: "descanso_salida",
-          entrada_descanso: "descanso_entrada"
-        };
 
         db.query(
           "INSERT INTO registros (persona_id, tipo, fecha_hora) VALUES (?, ?, NOW())",
-          [personaCoincidente.id, tipoDBMap[tipo]],
+          [personaCoincidente.id, tipoGuardado],
           err3 => {
             console.timeEnd("Reconocer");
             if (err3) {
@@ -444,7 +454,6 @@ app.put("/personas/:id", verificarToken, soloAdmin, (req, res) => {
   );
 });
 
-//  FIX: Eliminado DELETE manual de descriptores — ON DELETE CASCADE lo maneja automáticamente
 app.delete("/personas/:id", verificarToken, soloAdmin, (req, res) => {
   db.query("DELETE FROM personas WHERE id=?", [req.params.id], err => {
     if (err) {
@@ -457,9 +466,12 @@ app.delete("/personas/:id", verificarToken, soloAdmin, (req, res) => {
 
 
 // ASISTENCIAS
+// FIX #4: Paginación agregada para evitar limite fijo de 500
 
 app.get("/asistencias", verificarToken, soloAdmin, (req, res) => {
-  const { desde, hasta, busqueda, tipo } = req.query;
+  const { desde, hasta, busqueda, tipo, page } = req.query;
+  const limit = 50;
+  const offset = (Math.max(parseInt(page) || 1, 1) - 1) * limit;
 
   let sql = `
     SELECT r.id, p.nombre, p.sede, r.tipo, r.fecha_hora AS fecha
@@ -477,14 +489,14 @@ app.get("/asistencias", verificarToken, soloAdmin, (req, res) => {
   }
   if (tipo) { sql += " AND r.tipo = ?"; params.push(tipo); }
 
-  sql += " ORDER BY r.fecha_hora DESC LIMIT 500";
+  sql += ` ORDER BY r.fecha_hora DESC LIMIT ${limit} OFFSET ${offset}`;
 
   db.query(sql, params, (err, rows) => {
     if (err) {
       console.error("Error obteniendo registros:", err);
       return res.status(500).json([]);
     }
-    res.json(rows);
+    res.json({ data: rows, page: parseInt(page) || 1, limit });
   });
 });
 
