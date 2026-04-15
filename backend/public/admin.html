@@ -642,27 +642,27 @@ if (!token) {
     currentRole = payload.role;
 
     if (currentRole !== "admin") {
-      showDenied("No tienes permisos para acceder al panel administrativo.");
+      window.location.href = "/login.html";
     } else {
       showMain();
-
-      // Navbar
-      document.getElementById("linkLogin").style.display   = "none";
-      document.getElementById("linkLogout").style.display  = "block";
-      document.getElementById("linkIndex").style.display   = "block";
+      document.getElementById("linkLogin").style.display    = "none";
+      document.getElementById("linkLogout").style.display   = "block";
+      document.getElementById("linkIndex").style.display    = "block";
       document.getElementById("linkRegistro").style.display = "block";
       document.getElementById("linkUsuarios").style.display = "block";
 
-      // Init data
-      window.addEventListener("load", () => {
-        cargarRegistros();
-        cargarPersonas();
-        cargarUsuarios();
-      });
+      // Cargar datos una vez el DOM esté listo
+      if (document.readyState === "complete") {
+        cargarRegistros(); cargarPersonas(); cargarUsuarios();
+      } else {
+        window.addEventListener("load", () => {
+          cargarRegistros(); cargarPersonas(); cargarUsuarios();
+        });
+      }
     }
   } catch {
     localStorage.removeItem("token");
-    showDenied("Sesión inválida. Por favor inicia sesión de nuevo.");
+    window.location.href = "/login.html";
   }
 }
 
@@ -702,58 +702,83 @@ function debounce(fn, d) {
   return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), d); };
 }
 
+/* ===== FETCH CON ANTI-CACHÉ ===== */
+function authFetch(url, options = {}) {
+  return fetch(url, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache",
+      ...(options.headers || {})
+    }
+  });
+}
+
 /* ===== REGISTROS ===== */
 async function cargarRegistros() {
   const params = new URLSearchParams();
   const fecha = document.getElementById("fechaFiltro").value;
   const busq  = document.getElementById("busquedaGeneral").value;
   const tipo  = document.getElementById("tipoFiltro").value;
-  if (fecha) params.append("fecha", fecha);
-  if (busq)  params.append("busqueda", busq);
-  if (tipo)  params.append("tipo", tipo);
+
+  // FIX: backend usa "desde"/"hasta", no "fecha"
+  if (fecha) {
+    params.append("desde", fecha);
+    params.append("hasta", fecha);
+  }
+  if (busq) params.append("busqueda", busq);
+  if (tipo) params.append("tipo", tipo);
 
   try {
-    const res  = await fetch("/asistencias?" + params, { headers: { Authorization: `Bearer ${token}` } });
-    const data = await res.json();
+    const res  = await authFetch("/asistencias?" + params);
+    const json = await res.json();
+    // FIX: backend devuelve { data: [], page, limit }
+    const data = Array.isArray(json) ? json : (json.data || []);
     renderRegistros(data);
     actualizarStats(data);
     actualizarGrafico(data);
-  } catch { toast("Error al cargar registros", "#f87171"); }
+  } catch(e) {
+    console.error("Error cargarRegistros:", e);
+    toast("Error al cargar registros", "#f87171");
+  }
 }
 
 function renderRegistros(data) {
   const tbody = document.getElementById("registrosBody");
-  if (!data.length) {
+  if (!data || !data.length) {
     tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="icon">📋</div>Sin registros para este filtro</div></td></tr>`;
     return;
   }
   tbody.innerHTML = data.map(r => `
     <tr>
-      <td style="font-weight:500">${r.nombre}</td>
-      <td style="color:var(--muted)">${r.sede}</td>
+      <td style="font-weight:500">${r.nombre || "—"}</td>
+      <td style="color:var(--muted)">${r.sede || "—"}</td>
       <td><span class="badge-tipo badge-${r.tipo}">${formatTipo(r.tipo)}</span></td>
-      <td style="font-family:var(--font-mono);font-size:0.78rem;color:var(--muted)">${new Date(r.fecha).toLocaleString("es-CO")}</td>
+      <td style="font-family:var(--font-mono);font-size:0.78rem;color:var(--muted)">
+        ${r.fecha ? new Date(r.fecha).toLocaleString("es-CO") : "—"}
+      </td>
     </tr>
   `).join("");
 }
 
 function formatTipo(t) {
-  return { entrada:"ENTRADA", salida:"SALIDA", descanso_salida:"DESC. SAL.", descanso_entrada:"DESC. ENT." }[t] || t.toUpperCase();
+  return { entrada:"ENTRADA", salida:"SALIDA", descanso_salida:"DESC. SAL.", descanso_entrada:"DESC. ENT." }[t] || (t || "").toUpperCase();
 }
 
 function actualizarStats(data) {
   const hoy = new Date().toDateString();
-  const hoyData = data.filter(r => new Date(r.fecha).toDateString() === hoy);
-  document.getElementById("statEntrada").textContent  = hoyData.filter(r=>r.tipo==="entrada").length;
-  document.getElementById("statSalida").textContent   = hoyData.filter(r=>r.tipo==="salida").length;
-  document.getElementById("statDescanso").textContent = hoyData.filter(r=>r.tipo.startsWith("descanso")).length;
+  const hoyData = data.filter(r => r.fecha && new Date(r.fecha).toDateString() === hoy);
+  document.getElementById("statEntrada").textContent  = hoyData.filter(r => r.tipo === "entrada").length;
+  document.getElementById("statSalida").textContent   = hoyData.filter(r => r.tipo === "salida").length;
+  document.getElementById("statDescanso").textContent = hoyData.filter(r => r.tipo && r.tipo.startsWith("descanso")).length;
 }
 
 function actualizarGrafico(data) {
   const ctx    = document.getElementById("graficoAsistencias").getContext("2d");
   const tipos  = ["entrada","salida","descanso_salida","descanso_entrada"];
   const labels = ["Entrada","Salida","Desc. Salida","Desc. Entrada"];
-  const counts = tipos.map(t => data.filter(r=>r.tipo===t).length);
+  const counts = tipos.map(t => data.filter(r => r.tipo === t).length);
   const colors = ["#3b82f6","#ef4444","#f59e0b","#10b981"];
 
   if (chart) chart.destroy();
@@ -792,12 +817,18 @@ document.getElementById("exportExcel").addEventListener("click", async () => {
     const fecha = document.getElementById("fechaFiltro").value;
     const busq  = document.getElementById("busquedaGeneral").value;
     const tipo  = document.getElementById("tipoFiltro").value;
-    if (fecha) params.append("fecha", fecha);
-    if (busq)  params.append("busqueda", busq);
-    if (tipo)  params.append("tipo", tipo);
 
-    const res  = await fetch("/asistencias?" + params, { headers: { Authorization: `Bearer ${token}` } });
-    const data = await res.json();
+    // FIX: mismo ajuste de parámetros
+    if (fecha) {
+      params.append("desde", fecha);
+      params.append("hasta", fecha);
+    }
+    if (busq) params.append("busqueda", busq);
+    if (tipo) params.append("tipo", tipo);
+
+    const res  = await authFetch("/asistencias?" + params);
+    const json = await res.json();
+    const data = Array.isArray(json) ? json : (json.data || []);
 
     if (!data.length) { toast("Sin datos para exportar", "#f59e0b"); return; }
 
@@ -805,7 +836,7 @@ document.getElementById("exportExcel").addEventListener("click", async () => {
       Nombre: r.nombre,
       Sede: r.sede,
       Tipo: r.tipo,
-      "Fecha/Hora": new Date(r.fecha).toLocaleString("es-CO")
+      "Fecha/Hora": r.fecha ? new Date(r.fecha).toLocaleString("es-CO") : "—"
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -813,7 +844,8 @@ document.getElementById("exportExcel").addEventListener("click", async () => {
     XLSX.utils.book_append_sheet(wb, ws, "Asistencias");
     XLSX.writeFile(wb, `asistencias_${new Date().toISOString().split("T")[0]}.xlsx`);
     toast("✓ Excel exportado correctamente");
-  } catch {
+  } catch(e) {
+    console.error("Error exportar:", e);
     toast("Error al exportar", "#f87171");
   }
 });
@@ -821,11 +853,14 @@ document.getElementById("exportExcel").addEventListener("click", async () => {
 /* ===== PERSONAS ===== */
 async function cargarPersonas() {
   try {
-    const res = await fetch("/personas", { headers: { Authorization: `Bearer ${token}` } });
+    const res = await authFetch("/personas");
     allPersonas = await res.json();
-    document.getElementById("statPersonas").textContent = allPersonas.filter(p=>p.activo).length;
+    document.getElementById("statPersonas").textContent = allPersonas.filter(p => p.activo).length;
     renderPersonas();
-  } catch { toast("Error al cargar personas", "#f87171"); }
+  } catch(e) {
+    console.error("Error cargarPersonas:", e);
+    toast("Error al cargar personas", "#f87171");
+  }
 }
 
 function renderPersonas() {
@@ -848,7 +883,9 @@ function renderPersonas() {
       <td style="color:var(--muted)">${p.sede}</td>
       <td>
         <span class="status-dot ${p.activo ? 'status-active' : 'status-inactive'}"></span>
-        <span style="font-size:0.8rem;color:${p.activo?'#34d399':'var(--muted)'}">${p.activo ? "Activo" : "Inactivo"}</span>
+        <span style="font-size:0.8rem;color:${p.activo ? '#34d399' : 'var(--muted)'}">
+          ${p.activo ? "Activo" : "Inactivo"}
+        </span>
       </td>
       <td style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn-sm-action btn-edit editBtn">Editar</button>
@@ -873,7 +910,7 @@ function renderPersonas() {
     btn.addEventListener("click", async () => {
       if (!confirm("¿Eliminar esta persona?")) return;
       const id = +btn.closest("tr").dataset.id;
-      await fetch(`/personas/${id}`, { method:"DELETE", headers:{ Authorization:`Bearer ${token}` } });
+      await authFetch(`/personas/${id}`, { method: "DELETE" });
       toast("Persona eliminada", "#f87171");
       cargarPersonas();
     });
@@ -882,7 +919,7 @@ function renderPersonas() {
   tbody.querySelectorAll(".toggleBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const id = +btn.closest("tr").dataset.id;
-      await fetch(`/personas/${id}/toggle`, { method:"POST", headers:{ Authorization:`Bearer ${token}` } });
+      await authFetch(`/personas/${id}/toggle`, { method: "POST" });
       toast("Estado actualizado");
       cargarPersonas();
     });
@@ -893,9 +930,9 @@ document.getElementById("editConfirm").addEventListener("click", async () => {
   const nombre = document.getElementById("editNombre").value.trim();
   const sede   = document.getElementById("editSede").value.trim();
   if (!nombre || !sede) { toast("Completa todos los campos", "#f59e0b"); return; }
-  await fetch(`/personas/${editingId}`, {
+  await authFetch(`/personas/${editingId}`, {
     method: "PUT",
-    headers: { "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ nombre, sede })
   });
   bootstrap.Modal.getInstance(document.getElementById("editModal")).hide();
@@ -906,7 +943,7 @@ document.getElementById("editConfirm").addEventListener("click", async () => {
 /* ===== USUARIOS ===== */
 async function cargarUsuarios() {
   try {
-    const res = await fetch("/usuarios", { headers: { Authorization: `Bearer ${token}` } });
+    const res = await authFetch("/usuarios");
     if (!res.ok) return;
     allUsuarios = await res.json();
     renderUsuarios();
@@ -964,8 +1001,8 @@ function renderUsuarios() {
   tbody.querySelectorAll(".deleteUserBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       if (!confirm("¿Eliminar este usuario? Esta acción no se puede deshacer.")) return;
-      const id = +btn.closest("tr").dataset.id;
-      const res = await fetch(`/usuarios/${id}`, { method:"DELETE", headers:{ Authorization:`Bearer ${token}` } });
+      const id  = +btn.closest("tr").dataset.id;
+      const res = await authFetch(`/usuarios/${id}`, { method: "DELETE" });
       if (res.ok) { toast("Usuario eliminado", "#f87171"); cargarUsuarios(); }
       else        { toast("Error al eliminar", "#f87171"); }
     });
@@ -973,8 +1010,8 @@ function renderUsuarios() {
 
   tbody.querySelectorAll(".toggleUserBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
-      const id = +btn.closest("tr").dataset.id;
-      const res = await fetch(`/usuarios/${id}/toggle`, { method:"POST", headers:{ Authorization:`Bearer ${token}` } });
+      const id  = +btn.closest("tr").dataset.id;
+      const res = await authFetch(`/usuarios/${id}/toggle`, { method: "POST" });
       if (res.ok) { toast("Estado de usuario actualizado"); cargarUsuarios(); }
       else        { toast("Error al actualizar estado", "#f87171"); }
     });
@@ -992,9 +1029,9 @@ document.getElementById("editUserConfirm").addEventListener("click", async () =>
   const body = { username, rol };
   if (password) body.password = password;
 
-  const res = await fetch(`/usuarios/${editingUserId}`, {
+  const res = await authFetch(`/usuarios/${editingUserId}`, {
     method: "PUT",
-    headers: { "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });
 
