@@ -11,7 +11,7 @@ require("dotenv").config();
 
 const app = express();
 
-// ✅ FIX: CORS restringido al origen del cliente
+//  FIX: CORS restringido al origen del cliente
 app.use(cors({
   origin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
   methods: ["GET", "POST", "PUT", "DELETE"]
@@ -20,7 +20,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// ✅ Rate limiter para login
+// Rate limiter para login
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -29,7 +29,7 @@ const loginLimiter = rateLimit({
   message: { msg: "Demasiados intentos fallidos. Espera 15 minutos." }
 });
 
-// ✅ FIX: Rate limiter general para rutas sensibles sin token
+//  FIX: Rate limiter general para rutas sensibles sin token
 const generalLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 60,
@@ -85,7 +85,7 @@ function soloAdmin(req, res, next) {
   next();
 }
 
-// ✅ FIX: soloAdminOOperador simplificado — verificarToken ya garantiza usuario válido
+//  FIX: soloAdminOOperador simplificado  verificarToken ya garantiza usuario válido
 function soloAdminOOperador(req, res, next) {
   if (!["admin", "user"].includes(req.user.role))
     return res.status(403).send({ msg: "No autorizado" });
@@ -111,7 +111,7 @@ function euclideanDistance(a, b) {
 
 const FACE_THRESHOLD = 0.45;
 
-// ✅ FIX: Validación de longitud de password (bcrypt solo procesa 72 chars)
+//  FIX: Validación de longitud de password (bcrypt solo procesa 72 chars)
 function validarPassword(password, res) {
   if (!password || password.length > 72) {
     res.status(400).send({ msg: "La contraseña debe tener entre 1 y 72 caracteres" });
@@ -129,7 +129,7 @@ app.post("/login", loginLimiter, (req, res) => {
   if (!username || !password)
     return res.status(400).send({ msg: "Datos incompletos" });
 
-  // ✅ FIX: Validar longitud antes de bcrypt
+  //FIX: Validar longitud antes de bcrypt
   if (!validarPassword(password, res)) return;
 
   db.query("SELECT * FROM usuarios WHERE username=?", [username], async (err, rows) => {
@@ -160,7 +160,7 @@ app.post("/login", loginLimiter, (req, res) => {
 
 
 // CRUD USUARIOS
-// ✅ FIX: Eliminada ruta duplicada /crear-usuario — consolidada en POST /usuarios
+//  FIX: Eliminada ruta duplicada /crear-usuario consolidada en POST /usuarios
 
 app.get("/usuarios", verificarToken, soloAdmin, (req, res) => {
   db.query("SELECT id, username, rol, activo FROM usuarios", (err, rows) => {
@@ -215,7 +215,7 @@ app.put("/usuarios/:id", verificarToken, soloAdmin, async (req, res) => {
   let params = [username, rol, req.params.id];
 
   if (password) {
-    // ✅ FIX: Validar longitud antes de bcrypt
+    //  FIX: Validar longitud antes de bcrypt
     if (!validarPassword(password, res)) return;
     const hash = await bcrypt.hash(password, 10);
     sql = "UPDATE usuarios SET username=?, rol=?, password=? WHERE id=?";
@@ -304,7 +304,7 @@ app.post("/registrar-persona", verificarToken, soloAdminOOperador, (req, res) =>
 
 
 // RECONOCER
-// ✅ FIX: Protegido con verificarToken + generalLimiter
+// FIX: Protegido con verificarToken + generalLimiter
 // Agrega el token JWT en el header Authorization desde tu cliente/dispositivo
 
 app.post("/reconocer", generalLimiter, verificarToken, (req, res) => {
@@ -444,7 +444,7 @@ app.put("/personas/:id", verificarToken, soloAdmin, (req, res) => {
   );
 });
 
-// ✅ FIX: Eliminado DELETE manual de descriptores — ON DELETE CASCADE lo maneja automáticamente
+//  FIX: Eliminado DELETE manual de descriptores — ON DELETE CASCADE lo maneja automáticamente
 app.delete("/personas/:id", verificarToken, soloAdmin, (req, res) => {
   db.query("DELETE FROM personas WHERE id=?", [req.params.id], err => {
     if (err) {
