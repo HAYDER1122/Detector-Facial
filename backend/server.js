@@ -313,7 +313,7 @@ app.post("/registrar-persona",  (req, res) => {
 
 
 // RECONOCER
-// FIX #2: Lógica de descanso corregida — todo normalizado a tipos de BD
+
 
 app.post("/reconocer", generalLimiter,  (req, res) => {
   console.time("Reconocer");
@@ -327,7 +327,7 @@ app.post("/reconocer", generalLimiter,  (req, res) => {
   if (!tiposValidos.includes(tipo))
     return res.status(400).send({ ok: false });
 
-  // FIX #2: Mapeo al inicio para usar en validaciones consistentemente
+  //  Mapeo al inicio para usar en validaciones consistentemente
   const tipoDBMap = {
     entrada: "entrada",
     salida: "salida",

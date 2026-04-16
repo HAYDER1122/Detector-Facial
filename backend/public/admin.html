@@ -1026,6 +1026,12 @@ document.getElementById("editUserConfirm").addEventListener("click", async () =>
   if (!username || !rol) { toast("Completa los campos requeridos", "#f59e0b"); return; }
   if (password && password.length < 6) { toast("La contraseña debe tener al menos 6 caracteres", "#f59e0b"); return; }
 
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  if (editingUserId === payload.id && rol !== "admin") {
+    toast("No puedes cambiar tu propio rol de administrador", "#f59e0b");
+    return;
+  }
+
   const body = { username, rol };
   if (password) body.password = password;
 
