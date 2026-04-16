@@ -53,9 +53,9 @@ const db = mysql.createPool({
 
 db.getConnection((err, conn) => {
   if (err) {
-    console.error("❌ Error conectando BD:", err.code);
+    console.error(" Error conectando BD:", err.code);
   } else {
-    console.log("✅ DB conectada");
+    console.log(" DB conectada");
     conn.release();
   }
 });
@@ -73,7 +73,7 @@ function verificarToken(req, res, next) {
   if (!token) return res.status(401).send({ msg: "Token inválido" });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    // FIX #5: Distinguir token expirado de token inválido
+    
     if (err) {
       if (err.name === "TokenExpiredError") {
         return res.status(401).send({ msg: "Token expirado", expired: true });
@@ -116,7 +116,7 @@ function euclideanDistance(a, b) {
 
 const FACE_THRESHOLD = 0.45;
 
-// Validación de longitud de password (bcrypt solo procesa 72 chars)
+// Validación de longitud de password 
 function validarPassword(password, res) {
   if (!password || password.length > 72) {
     res.status(400).send({ msg: "La contraseña debe tener entre 1 y 72 caracteres" });
@@ -233,7 +233,7 @@ app.put("/usuarios/:id", verificarToken, soloAdmin, async (req, res) => {
 });
 
 app.delete("/usuarios/:id", verificarToken, soloAdmin, (req, res) => {
-  // FIX #6: Evitar que un admin se elimine a sí mismo
+  
   if (req.params.id == req.user.id)
     return res.status(400).json({ msg: "No puedes eliminar tu propia cuenta" });
 
@@ -247,7 +247,7 @@ app.delete("/usuarios/:id", verificarToken, soloAdmin, (req, res) => {
 });
 
 app.post("/usuarios/:id/toggle", verificarToken, soloAdmin, (req, res) => {
-  // FIX #6: Evitar que un admin se desactive a sí mismo
+  
   if (req.params.id == req.user.id)
     return res.status(400).json({ msg: "No puedes desactivarte a ti mismo" });
 
@@ -371,9 +371,7 @@ app.post("/reconocer", generalLimiter,  (req, res) => {
           return res.status(500).send({ ok: false });
         }
 
-        // FIX #2: accionesHoy usa tipos de BD (descanso_salida, descanso_entrada)
         const accionesHoy = registros.map(r => r.tipo);
-
         if (tipoGuardado === "entrada" && accionesHoy.includes("entrada"))
           return res.send({ ok: false, mensaje: "Ya registraste entrada hoy" });
 
@@ -466,7 +464,7 @@ app.delete("/personas/:id", verificarToken, soloAdmin, (req, res) => {
 
 
 // ASISTENCIAS
-// FIX #4: Paginación agregada para evitar limite fijo de 500
+
 
 app.get("/asistencias", verificarToken, soloAdmin, (req, res) => {
   const { desde, hasta, busqueda, tipo, page } = req.query;
