@@ -1,6 +1,14 @@
 # 🎭 Detector Facial
 
 > Sistema web de **detección y reconocimiento facial** en tiempo real con autenticación segura, gestión de usuarios y exportación de reportes.
+
+![Node.js](https://img.shields.io/badge/Node.js-v18+-339933?style=flat&logo=node.js&logoColor=white)
+![Express](https://img.shields.io/badge/Express-5.x-000000?style=flat&logo=express&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8.x-4479A1?style=flat&logo=mysql&logoColor=white)
+![face-api.js](https://img.shields.io/badge/face--api.js-0.22.2-FF6B6B?style=flat)
+![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?style=flat&logo=railway&logoColor=white)
+![Licencia](https://img.shields.io/badge/Licencia-ISC-blue?style=flat)
+
 ---
 
 ## 📋 Tabla de Contenidos
@@ -164,6 +172,9 @@ PORT=3000
 NODE_ENV=development
 ```
 
+> ⚠️ **Nunca subas el archivo `.env` a GitHub.** Asegúrate de que esté en tu `.gitignore`.
+
+---
 
 ## 💻 Uso
 
@@ -256,19 +267,6 @@ El proyecto incluye el archivo `railway.json` preconfigurado:
 4. Configura las variables de entorno en el panel de Railway.
 5. Railway desplegará automáticamente al hacer push a `main`.
 
----
-
-## 🤝 Contribuir
-
-Las contribuciones son bienvenidas. Por favor:
-
-1. Haz un fork del repositorio.
-2. Crea una rama para tu feature: `git checkout -b feature/nueva-funcionalidad`.
-3. Realiza tus cambios y haz commit: `git commit -m 'feat: agrega nueva funcionalidad'`.
-4. Haz push a tu rama: `git push origin feature/nueva-funcionalidad`.
-5. Abre un Pull Request.
-
----
 
 
 <p align="center">
