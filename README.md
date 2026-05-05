@@ -24,7 +24,7 @@
 - [Estructura del Proyecto](#-estructura-del-proyecto)
 - [API Endpoints](#-api-endpoints)
 - [Despliegue](#-despliegue-en-railway)
-- [Contribuir](#-contribuir)
+  
 
 ---
 
@@ -270,5 +270,5 @@ El proyecto incluye el archivo `railway.json` preconfigurado:
 
 
 <p align="center">
-  Hecho con ❤️ por <a href="https://github.com/HAYDER1122">HAYDER1122</a>
+  Hecho  por <a href="https://github.com/HAYDER1122">HAYDER1122</a>
 </p>
